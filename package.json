@@ -11,11 +11,15 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@iconify-json/openmoji": "^1.2.27",
+    "@iconify-json/ph": "^1.2.2",
     "@iconify-json/radix-icons": "^1.2.6",
+    "@iconify-json/solar": "^1.2.5",
     "@iconify-json/tabler": "^1.2.35",
     "@pinia/nuxt": "^0.11.3",
     "@una-ui/nuxt": "^1.0.0-alpha.17",
     "@unocss/nuxt": "^66.7.0",
+    "js-yaml": "^4.2.0",
     "nuxt": "^4.4.6",
     "vue": "^3.5.34",
     "vue-router": "^5.0.7"
@@ -23,6 +27,7 @@
   "devDependencies": {
     "@iconify-json/lucide": "^1.2.111",
     "@nuxt/test-utils": "^4.0.3",
+    "@types/js-yaml": "^4.0.9",
     "happy-dom": "^20.9.0",
     "vitest": "^4.1.8"
   }
