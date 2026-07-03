@@ -1,26 +1,3 @@
-<script setup lang="ts">
-import type { ColumnConfig } from '~/types/config'
-import { SIZES } from '~/types/config'
-
-const store = useDashboardStore()
-const { toast, downloadYaml, handleFileUpload } = useYamlConfig()
-const editor = useEditorStore()
-
-useHead({
-  title: `${store.title} - Dashboard`,
-})
-
-const fileInput = ref<HTMLInputElement>()
-
-function triggerImport() {
-  fileInput.value?.click()
-}
-
-function gridTemplate(columns: ColumnConfig[]) {
-  return columns.map(c => SIZES[c.size]).join(' ')
-}
-</script>
-
 <template>
   <div class="min-h-screen bg-primary">
     <AppHeader @import="triggerImport" @export="downloadYaml()" />
@@ -84,3 +61,26 @@ function gridTemplate(columns: ColumnConfig[]) {
     </ClientOnly>
   </div>
 </template>
+
+<script setup lang="ts">
+import type { ColumnConfig } from '~/types/config'
+import { SIZES } from '~/types/config'
+
+const store = useDashboardStore()
+const { toast, downloadYaml, handleFileUpload } = useYamlConfig()
+const editor = useEditorStore()
+
+useHead({
+  title: `${store.title} - Dashboard`,
+})
+
+const fileInput = ref<HTMLInputElement>()
+
+function triggerImport() {
+  fileInput.value?.click()
+}
+
+function gridTemplate(columns: ColumnConfig[]) {
+  return columns.map(c => SIZES[c.size]).join(' ')
+}
+</script>

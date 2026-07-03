@@ -1,62 +1,3 @@
-<script setup lang="ts">
-const currentTime = ref(new Date())
-const timezone = ref('Europe/London')
-
-onMounted(() => {
-  setInterval(() => {
-    currentTime.value = new Date()
-  }, 1000)
-})
-
-const formattedTime = computed(() => {
-  return currentTime.value.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-    timeZone: timezone.value,
-  })
-})
-
-const formattedDate = computed(() => {
-  return currentTime.value.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    timeZone: timezone.value,
-  })
-})
-
-const hours = computed(() => {
-  const time = currentTime.value.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    hour12: false,
-    timeZone: timezone.value,
-  })
-  return parseInt(time)
-})
-
-const minutes = computed(() => {
-  const time = currentTime.value.toLocaleTimeString('en-US', {
-    minute: 'numeric',
-    timeZone: timezone.value,
-  })
-  return parseInt(time)
-})
-
-const seconds = computed(() => {
-  const time = currentTime.value.toLocaleTimeString('en-US', {
-    second: 'numeric',
-    timeZone: timezone.value,
-  })
-  return parseInt(time)
-})
-
-const hourRotation = computed(() => (hours.value % 12) * 30 + minutes.value * 0.5)
-const minuteRotation = computed(() => minutes.value * 6)
-const secondRotation = computed(() => seconds.value * 6)
-</script>
-
 <template>
   <WidgetCard title="Clock">
     <div class="flex flex-col items-center gap-4">
@@ -128,3 +69,62 @@ const secondRotation = computed(() => seconds.value * 6)
     </div>
   </WidgetCard>
 </template>
+
+<script setup lang="ts">
+const currentTime = ref(new Date())
+const timezone = ref('Europe/London')
+
+onMounted(() => {
+  setInterval(() => {
+    currentTime.value = new Date()
+  }, 1000)
+})
+
+const formattedTime = computed(() => {
+  return currentTime.value.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    timeZone: timezone.value,
+  })
+})
+
+const formattedDate = computed(() => {
+  return currentTime.value.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    timeZone: timezone.value,
+  })
+})
+
+const hours = computed(() => {
+  const time = currentTime.value.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    hour12: false,
+    timeZone: timezone.value,
+  })
+  return parseInt(time)
+})
+
+const minutes = computed(() => {
+  const time = currentTime.value.toLocaleTimeString('en-US', {
+    minute: 'numeric',
+    timeZone: timezone.value,
+  })
+  return parseInt(time)
+})
+
+const seconds = computed(() => {
+  const time = currentTime.value.toLocaleTimeString('en-US', {
+    second: 'numeric',
+    timeZone: timezone.value,
+  })
+  return parseInt(time)
+})
+
+const hourRotation = computed(() => (hours.value % 12) * 30 + minutes.value * 0.5)
+const minuteRotation = computed(() => minutes.value * 6)
+const secondRotation = computed(() => seconds.value * 6)
+</script>

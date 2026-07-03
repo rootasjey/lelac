@@ -1,30 +1,3 @@
-<script setup lang="ts">
-import { uid } from '~/utils/uid'
-import type { WidgetConfig } from '~/types/config'
-
-const store = useDashboardStore()
-const emit = defineEmits<{
-  close: []
-}>()
-
-const availableWidgets: Array<{ type: string; title: string; icon: string; description: string }> = [
-  { type: 'calendar', title: 'Calendar', icon: '📅', description: 'Monthly calendar view' },
-  { type: 'weather', title: 'Weather', icon: '🌤️', description: 'Weather forecast with hourly bars' },
-  { type: 'clock', title: 'Clock', icon: '🕐', description: 'Analog and digital clock' },
-  { type: 'rss', title: 'RSS Feed', icon: '📡', description: 'RSS/Atom feed reader' },
-  { type: 'links', title: 'Quick Links', icon: '🔗', description: 'Configurable link grid' },
-]
-
-function addToColumn(type: string, title: string) {
-  const page = store.currentPage
-  if (!page) return
-  const lastCol = page.columns.length - 1
-  const widget: WidgetConfig = { id: uid(), type, title }
-  store.addWidget(lastCol, widget)
-  emit('close')
-}
-</script>
-
 <template>
   <div class="fixed inset-0 z-50 flex items-center justify-center">
     <div class="absolute inset-0 bg-black/50" @click="emit('close')" />
@@ -57,3 +30,30 @@ function addToColumn(type: string, title: string) {
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+import { uid } from '~/utils/uid'
+import type { WidgetConfig } from '~/types/config'
+
+const store = useDashboardStore()
+const emit = defineEmits<{
+  close: []
+}>()
+
+const availableWidgets: Array<{ type: string; title: string; icon: string; description: string }> = [
+  { type: 'calendar', title: 'Calendar', icon: '📅', description: 'Monthly calendar view' },
+  { type: 'weather', title: 'Weather', icon: '🌤️', description: 'Weather forecast with hourly bars' },
+  { type: 'clock', title: 'Clock', icon: '🕐', description: 'Analog and digital clock' },
+  { type: 'rss', title: 'RSS Feed', icon: '📡', description: 'RSS/Atom feed reader' },
+  { type: 'links', title: 'Quick Links', icon: '🔗', description: 'Configurable link grid' },
+]
+
+function addToColumn(type: string, title: string) {
+  const page = store.currentPage
+  if (!page) return
+  const lastCol = page.columns.length - 1
+  const widget: WidgetConfig = { id: uid(), type, title }
+  store.addWidget(lastCol, widget)
+  emit('close')
+}
+</script>

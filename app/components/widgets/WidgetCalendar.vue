@@ -1,3 +1,44 @@
+<template>
+  <WidgetCard title="Calendar">
+    <div class="space-y-2">
+      <div class="flex items-center justify-between">
+        <h4 class="font-medium text-primary text-sm">{{ monthName }}</h4>
+        <span class="text-xs text-muted">Week {{ weekNumber }} · {{ year }}</span>
+      </div>
+
+      <div class="grid grid-cols-7 text-center">
+        <div
+          v-for="day in daysOfWeek"
+          :key="day"
+          class="text-[10px] text-muted font-medium py-1"
+        >
+          {{ day }}
+        </div>
+
+        <div
+          v-for="(day, index) in calendarDays"
+          :key="index"
+          class="text-xs py-1"
+          :class="{
+            'text-muted': !day.isCurrentMonth,
+            'text-primary': day.isCurrentMonth && !day.isToday,
+          }"
+        >
+          <span
+            v-if="day.isToday"
+            class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-accent text-accent-text text-xs font-medium"
+          >
+            {{ day.date }}
+          </span>
+          <span v-else class="inline-flex items-center justify-center w-6 h-6">
+            {{ day.date }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </WidgetCard>
+</template>
+
 <script setup lang="ts">
 const currentDate = ref(new Date())
 
@@ -71,44 +112,3 @@ function nextMonth() {
   currentDate.value = newDate
 }
 </script>
-
-<template>
-  <WidgetCard title="Calendar">
-    <div class="space-y-2">
-      <div class="flex items-center justify-between">
-        <h4 class="font-medium text-primary text-sm">{{ monthName }}</h4>
-        <span class="text-xs text-muted">Week {{ weekNumber }} · {{ year }}</span>
-      </div>
-
-      <div class="grid grid-cols-7 text-center">
-        <div
-          v-for="day in daysOfWeek"
-          :key="day"
-          class="text-[10px] text-muted font-medium py-1"
-        >
-          {{ day }}
-        </div>
-
-        <div
-          v-for="(day, index) in calendarDays"
-          :key="index"
-          class="text-xs py-1"
-          :class="{
-            'text-muted': !day.isCurrentMonth,
-            'text-primary': day.isCurrentMonth && !day.isToday,
-          }"
-        >
-          <span
-            v-if="day.isToday"
-            class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-accent text-accent-text text-xs font-medium"
-          >
-            {{ day.date }}
-          </span>
-          <span v-else class="inline-flex items-center justify-center w-6 h-6">
-            {{ day.date }}
-          </span>
-        </div>
-      </div>
-    </div>
-  </WidgetCard>
-</template>

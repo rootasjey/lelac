@@ -1,40 +1,3 @@
-<script setup lang="ts">
-import { VueDraggable } from 'vue-draggable-plus'
-import type { ColumnConfig, WidgetConfig } from '~/types/config'
-import { SIZES } from '~/types/config'
-import { uid } from '~/utils/uid'
-
-const store = useDashboardStore()
-const editor = useEditorStore()
-
-const showAddWidget = ref(false)
-
-function gridTemplate(columns: ColumnConfig[]) {
-  return columns.map(c => SIZES[c.size]).join(' ')
-}
-
-function widgetKey(widget: WidgetConfig) {
-  return widget.id ?? `${widget.type}-${widget.title}`
-}
-
-function onDragChange() {
-  // The v-model:list binding handles the array mutations automatically
-}
-
-function removeWidget(colIndex: number, wIndex: number) {
-  store.removeWidget(colIndex, wIndex)
-}
-
-function cycleSize(colIndex: number) {
-  const sizes: Array<'small' | 'medium' | 'large'> = ['small', 'medium', 'large']
-  const col = store.currentPage?.columns[colIndex]
-  if (!col) return
-  const currentIndex = sizes.indexOf(col.size)
-  const nextSize = sizes[(currentIndex + 1) % sizes.length]
-  store.setColumnSize(colIndex, nextSize)
-}
-</script>
-
 <template>
   <div v-if="store.currentPage">
     <!-- Editor toolbar -->
@@ -151,3 +114,40 @@ function cycleSize(colIndex: number) {
     <WidgetSelector v-if="showAddWidget" @close="showAddWidget = false" />
   </div>
 </template>
+
+<script setup lang="ts">
+import { VueDraggable } from 'vue-draggable-plus'
+import type { ColumnConfig, WidgetConfig } from '~/types/config'
+import { SIZES } from '~/types/config'
+import { uid } from '~/utils/uid'
+
+const store = useDashboardStore()
+const editor = useEditorStore()
+
+const showAddWidget = ref(false)
+
+function gridTemplate(columns: ColumnConfig[]) {
+  return columns.map(c => SIZES[c.size]).join(' ')
+}
+
+function widgetKey(widget: WidgetConfig) {
+  return widget.id ?? `${widget.type}-${widget.title}`
+}
+
+function onDragChange() {
+  // The v-model:list binding handles the array mutations automatically
+}
+
+function removeWidget(colIndex: number, wIndex: number) {
+  store.removeWidget(colIndex, wIndex)
+}
+
+function cycleSize(colIndex: number) {
+  const sizes: Array<'small' | 'medium' | 'large'> = ['small', 'medium', 'large']
+  const col = store.currentPage?.columns[colIndex]
+  if (!col) return
+  const currentIndex = sizes.indexOf(col.size)
+  const nextSize = sizes[(currentIndex + 1) % sizes.length]
+  store.setColumnSize(colIndex, nextSize)
+}
+</script>

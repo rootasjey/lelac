@@ -1,3 +1,52 @@
+<template>
+  <WidgetCard title="Weather">
+    <div v-if="loading" class="flex items-center justify-center py-8">
+      <div class="text-muted text-sm">Loading...</div>
+    </div>
+    
+    <div v-else-if="error" class="flex items-center justify-center py-8">
+      <div class="text-red-400 text-sm">{{ error }}</div>
+    </div>
+    
+    <div v-else-if="weather" class="space-y-4">
+      <div class="text-center">
+        <div class="text-xl md:text-2xl font-medium text-primary">{{ weather.current.condition }}</div>
+        <div class="text-sm text-muted">Feels Like {{ weather.current.feelsLike }}°C</div>
+      </div>
+      
+      <div class="flex items-end justify-center gap-[2px] md:gap-[3px] h-16 md:h-20">
+        <div
+          v-for="(hour, index) in weather.hourly.filter((_, i) => i % 3 === 0)"
+          :key="index"
+          class="flex flex-col items-center"
+        >
+          <div
+            class="w-2 md:w-3 rounded-t"
+            :style="{
+              height: `${Math.max(4, (hour.temperature + 5) * 3)}px`,
+              backgroundColor: 'var(--weather-bar)',
+            }"
+          />
+        </div>
+      </div>
+
+      <div class="flex items-center justify-center gap-1 text-xs text-muted">
+        <span v-for="(hour, index) in weather.hourly.filter((_, i) => i % 6 === 0)" :key="index" class="w-12 text-center">
+          {{ hour.time?.toLowerCase() }}
+        </span>
+      </div>
+
+      <div class="flex items-center justify-center gap-1 text-xs text-muted">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <span>{{ weather.location.name }}, {{ weather.location.country }}</span>
+      </div>
+    </div>
+  </WidgetCard>
+</template>
+
 <script setup lang="ts">
 interface WeatherData {
   current: {
@@ -91,52 +140,3 @@ onMounted(() => {
   fetchWeather()
 })
 </script>
-
-<template>
-  <WidgetCard title="Weather">
-    <div v-if="loading" class="flex items-center justify-center py-8">
-      <div class="text-muted text-sm">Loading...</div>
-    </div>
-    
-    <div v-else-if="error" class="flex items-center justify-center py-8">
-      <div class="text-red-400 text-sm">{{ error }}</div>
-    </div>
-    
-    <div v-else-if="weather" class="space-y-4">
-      <div class="text-center">
-        <div class="text-xl md:text-2xl font-medium text-primary">{{ weather.current.condition }}</div>
-        <div class="text-sm text-muted">Feels Like {{ weather.current.feelsLike }}°C</div>
-      </div>
-      
-      <div class="flex items-end justify-center gap-[2px] md:gap-[3px] h-16 md:h-20">
-        <div
-          v-for="(hour, index) in weather.hourly.filter((_, i) => i % 3 === 0)"
-          :key="index"
-          class="flex flex-col items-center"
-        >
-          <div
-            class="w-2 md:w-3 rounded-t"
-            :style="{
-              height: `${Math.max(4, (hour.temperature + 5) * 3)}px`,
-              backgroundColor: 'var(--weather-bar)',
-            }"
-          />
-        </div>
-      </div>
-
-      <div class="flex items-center justify-center gap-1 text-xs text-muted">
-        <span v-for="(hour, index) in weather.hourly.filter((_, i) => i % 6 === 0)" :key="index" class="w-12 text-center">
-          {{ hour.time?.toLowerCase() }}
-        </span>
-      </div>
-
-      <div class="flex items-center justify-center gap-1 text-xs text-muted">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-        <span>{{ weather.location.name }}, {{ weather.location.country }}</span>
-      </div>
-    </div>
-  </WidgetCard>
-</template>

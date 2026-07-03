@@ -1,3 +1,41 @@
+<template>
+  <WidgetCard title="RSS Feed">
+    <div v-if="loading" class="flex items-center justify-center py-8">
+      <div class="text-muted text-sm">Loading...</div>
+    </div>
+    
+    <div v-else-if="error" class="flex items-center justify-center py-8">
+      <div class="text-red-400 text-sm">{{ error }}</div>
+    </div>
+    
+    <div v-else class="space-y-3">
+      <a
+        v-for="(item, index) in displayItems"
+        :key="index"
+        :href="item.link"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="block group"
+      >
+        <div class="text-sm font-medium text-link group-hover:text-link-hover transition-colors">
+          {{ item.title }}
+        </div>
+        <div class="text-xs text-muted mt-0.5">
+          {{ item.pubDate }} · {{ item.source }}
+        </div>
+      </a>
+
+      <button
+        v-if="items.length > 3"
+        class="text-xs text-muted hover:text-secondary transition-colors uppercase tracking-wider"
+        @click="showAll = !showAll"
+      >
+        {{ showAll ? 'Show Less' : 'Show More' }} ▾
+      </button>
+    </div>
+  </WidgetCard>
+</template>
+
 <script setup lang="ts">
 interface FeedItem {
   title: string
@@ -73,41 +111,3 @@ onMounted(() => {
   fetchFeed()
 })
 </script>
-
-<template>
-  <WidgetCard title="RSS Feed">
-    <div v-if="loading" class="flex items-center justify-center py-8">
-      <div class="text-muted text-sm">Loading...</div>
-    </div>
-    
-    <div v-else-if="error" class="flex items-center justify-center py-8">
-      <div class="text-red-400 text-sm">{{ error }}</div>
-    </div>
-    
-    <div v-else class="space-y-3">
-      <a
-        v-for="(item, index) in displayItems"
-        :key="index"
-        :href="item.link"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="block group"
-      >
-        <div class="text-sm font-medium text-link group-hover:text-link-hover transition-colors">
-          {{ item.title }}
-        </div>
-        <div class="text-xs text-muted mt-0.5">
-          {{ item.pubDate }} · {{ item.source }}
-        </div>
-      </a>
-
-      <button
-        v-if="items.length > 3"
-        class="text-xs text-muted hover:text-secondary transition-colors uppercase tracking-wider"
-        @click="showAll = !showAll"
-      >
-        {{ showAll ? 'Show Less' : 'Show More' }} ▾
-      </button>
-    </div>
-  </WidgetCard>
-</template>

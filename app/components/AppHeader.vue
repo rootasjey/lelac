@@ -1,14 +1,3 @@
-<script setup lang="ts">
-const { isDark, toggleTheme } = useTheme()
-const store = useDashboardStore()
-const editor = useEditorStore()
-
-const emit = defineEmits<{
-  import: []
-  export: []
-}>()
-</script>
-
 <template>
   <header class="border-b border-primary bg-secondary">
     <div class="mx-auto max-w-7xl px-3 md:px-4">
@@ -70,3 +59,14 @@ const emit = defineEmits<{
     </div>
   </header>
 </template>
+
+<script setup lang="ts">
+const { isDark, toggleTheme } = useTheme()
+const store = useDashboardStore()
+const editor = useEditorStore()
+
+const emit = defineEmits<{
+  import: []
+  export: []
+}>()
+</script>

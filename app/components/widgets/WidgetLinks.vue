@@ -1,27 +1,3 @@
-<script setup lang="ts">
-interface Link {
-  title: string
-  url: string
-  icon?: string
-  color?: string
-}
-
-const props = defineProps<{
-  links?: Link[]
-}>()
-
-const defaultLinks: Link[] = [
-  { title: 'GitHub', url: 'https://github.com', color: '#f0f6fc' },
-  { title: 'Twitter', url: 'https://twitter.com', color: '#1da1f2' },
-  { title: 'YouTube', url: 'https://youtube.com', color: '#ff0000' },
-  { title: 'Reddit', url: 'https://reddit.com', color: '#ff4500' },
-  { title: 'Hacker News', url: 'https://news.ycombinator.com', color: '#ff6600' },
-  { title: 'Lobsters', url: 'https://lobste.rs', color: '#ac1309' },
-]
-
-const links = computed(() => props.links || defaultLinks)
-</script>
-
 <template>
   <WidgetCard title="Quick Links">
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -46,3 +22,27 @@ const links = computed(() => props.links || defaultLinks)
     </div>
   </WidgetCard>
 </template>
+
+<script setup lang="ts">
+interface Link {
+  title: string
+  url: string
+  icon?: string
+  color?: string
+}
+
+const props = defineProps<{
+  links?: Link[]
+}>()
+
+const defaultLinks: Link[] = [
+  { title: 'GitHub', url: 'https://github.com', color: '#f0f6fc' },
+  { title: 'Twitter', url: 'https://twitter.com', color: '#1da1f2' },
+  { title: 'YouTube', url: 'https://youtube.com', color: '#ff0000' },
+  { title: 'Reddit', url: 'https://reddit.com', color: '#ff4500' },
+  { title: 'Hacker News', url: 'https://news.ycombinator.com', color: '#ff6600' },
+  { title: 'Lobsters', url: 'https://lobste.rs', color: '#ac1309' },
+]
+
+const links = computed(() => props.links || defaultLinks)
+</script>

@@ -1,9 +1,3 @@
-<script setup lang="ts">
-defineProps<{
-  title: string
-}>()
-</script>
-
 <template>
   <div class="bg-widget border border-primary rounded overflow-hidden">
     <div class="px-3 md:px-4 py-2.5 md:py-3">
@@ -16,3 +10,9 @@ defineProps<{
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+defineProps<{
+  title: string
+}>()
+</script>

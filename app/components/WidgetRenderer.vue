@@ -1,3 +1,17 @@
+<template>
+  <component
+    :is="component"
+    v-if="component"
+    :title="widget.title || fallbackTitle"
+    v-bind="widget"
+  />
+  <WidgetCard v-else :title="widget.title || widget.type">
+    <div class="text-sm text-muted py-4 text-center">
+      Unknown widget type: <code>{{ widget.type }}</code>
+    </div>
+  </WidgetCard>
+</template>
+
 <script setup lang="ts">
 import type { WidgetConfig } from '~/types/config'
 
@@ -26,17 +40,3 @@ const fallbackTitle = computed(() => {
   return labels[props.widget.type] ?? props.widget.type
 })
 </script>
-
-<template>
-  <component
-    :is="component"
-    v-if="component"
-    :title="widget.title || fallbackTitle"
-    v-bind="widget"
-  />
-  <WidgetCard v-else :title="widget.title || widget.type">
-    <div class="text-sm text-muted py-4 text-center">
-      Unknown widget type: <code>{{ widget.type }}</code>
-    </div>
-  </WidgetCard>
-</template>
