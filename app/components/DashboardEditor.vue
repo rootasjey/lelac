@@ -92,38 +92,39 @@ function cycleSize(colIndex: number) {
 
         <!-- Draggable widget list -->
         <VueDraggable
-          :list="column.widgets"
+          v-model="column.widgets"
           group="widgets"
-          :item-key="(w: WidgetConfig) => widgetKey(w)"
           class="space-y-2 min-h-[60px] rounded border-2 border-dashed border-transparent hover:border-accent/30 transition-colors p-1"
           @change="onDragChange"
         >
-          <template #item="{ element: widget, index: wi }">
-            <div class="group relative bg-widget border border-primary rounded overflow-hidden">
-              <!-- Drag handle and actions -->
-              <div class="flex items-center justify-between px-3 py-1.5 bg-secondary/50 border-b border-primary/50">
-                <div class="flex items-center gap-2 cursor-grab active:cursor-grabbing">
-                  <svg class="w-3.5 h-3.5 text-muted" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 6h2v2H8V6zm6 0h2v2h-2V6zM8 11h2v2H8v-2zm6 0h2v2h-2v-2zm-6 5h2v2H8v-2zm6 0h2v2h-2v-2z" />
-                  </svg>
-                  <span class="text-xs text-muted font-mono uppercase">{{ widget.type }}</span>
-                </div>
-                <button
-                  class="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-muted hover:text-red-500 transition-all"
-                  :title="'Remove widget'"
-                  @click="removeWidget(ci, wi)"
-                >
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+          <div
+            v-for="(widget, wi) in column.widgets"
+            :key="widgetKey(widget)"
+            class="group relative bg-widget border border-primary rounded overflow-hidden"
+          >
+            <!-- Drag handle and actions -->
+            <div class="flex items-center justify-between px-3 py-1.5 bg-secondary/50 border-b border-primary/50">
+              <div class="flex items-center gap-2 cursor-grab active:cursor-grabbing">
+                <svg class="w-3.5 h-3.5 text-muted" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 6h2v2H8V6zm6 0h2v2h-2V6zM8 11h2v2H8v-2zm6 0h2v2h-2v-2zm-6 5h2v2H8v-2zm6 0h2v2h-2v-2z" />
+                </svg>
+                <span class="text-xs text-muted font-mono uppercase">{{ widget.type }}</span>
               </div>
-              <!-- Widget preview -->
-              <div class="opacity-60 pointer-events-none">
-                <WidgetRenderer :widget="widget" />
-              </div>
+              <button
+                class="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-muted hover:text-red-500 transition-all"
+                :title="'Remove widget'"
+                @click="removeWidget(ci, wi)"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-          </template>
+            <!-- Widget preview -->
+            <div class="opacity-60 pointer-events-none">
+              <WidgetRenderer :widget="widget" />
+            </div>
+          </div>
         </VueDraggable>
 
         <!-- Add widget button at bottom of column -->
