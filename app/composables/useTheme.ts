@@ -14,7 +14,7 @@ function applyTheme(theme: Theme) {
 export function useTheme() {
   function setTheme(theme: Theme) {
     preference.value = theme
-    localStorage.setItem('vitrine-theme', theme)
+    localStorage.setItem('distill-theme', theme)
     applyTheme(theme)
   }
 
@@ -23,7 +23,7 @@ export function useTheme() {
   }
 
   onMounted(() => {
-    const saved = localStorage.getItem('vitrine-theme') as Theme | null
+    const saved = localStorage.getItem('distill-theme') as Theme | null
     preference.value = saved || 'system'
     applyTheme(preference.value)
 

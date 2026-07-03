@@ -1,4 +1,5 @@
 export interface WidgetConfig {
+  id?: string
   type: string
   title: string
   [key: string]: unknown

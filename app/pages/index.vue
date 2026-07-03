@@ -4,6 +4,7 @@ import { SIZES } from '~/types/config'
 
 const store = useDashboardStore()
 const yaml = useYamlConfig()
+const editor = useEditorStore()
 
 useHead({
   title: `${store.title} - Dashboard`,
@@ -25,7 +26,11 @@ function gridTemplate(columns: ColumnConfig[]) {
     <AppHeader @import="triggerImport" @export="yaml.downloadYaml()" />
 
     <main class="mx-auto max-w-7xl px-3 md:px-4 py-3 md:py-4">
-      <template v-if="store.currentPage">
+      <!-- Edit mode -->
+      <DashboardEditor v-if="editor.isEditing && store.currentPage" />
+
+      <!-- View mode -->
+      <template v-else-if="store.currentPage">
         <div
           class="grid gap-3 md:gap-4 dashboard-grid"
           :style="{ gridTemplateColumns: gridTemplate(store.currentPage.columns) }"

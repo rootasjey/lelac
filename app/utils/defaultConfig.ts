@@ -1,7 +1,7 @@
 import type { DashboardConfig } from '~/types/config'
 
 export const defaultConfig: DashboardConfig = {
-  title: 'Vitrine',
+  title: 'Distill',
   theme: 'system',
   pages: [
     {

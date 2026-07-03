@@ -1,7 +1,7 @@
 import yaml from 'js-yaml'
 import type { DashboardConfig } from '~/types/config'
 
-const STORAGE_KEY = 'vitrine-config'
+const STORAGE_KEY = 'distill-config'
 
 export function useYamlConfig() {
   const store = useDashboardStore()
@@ -21,7 +21,7 @@ export function useYamlConfig() {
     })
   }
 
-  function downloadYaml(filename = 'vitrine-config.yaml') {
+  function downloadYaml(filename = 'distill-config.yaml') {
     const blob = new Blob([exportYaml()], { type: 'text/yaml' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

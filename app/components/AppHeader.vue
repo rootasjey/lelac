@@ -2,6 +2,7 @@
 const { isDark, toggleTheme } = useTheme()
 const store = useDashboardStore()
 const yaml = useYamlConfig()
+const editor = useEditorStore()
 
 const emit = defineEmits<{
   import: []
@@ -27,6 +28,14 @@ const emit = defineEmits<{
         </nav>
 
         <div class="ml-auto flex items-center gap-1 md:gap-2">
+          <button
+            class="px-2 py-1.5 md:px-3 md:py-1.5 rounded text-xs font-medium transition-colors"
+            :class="editor.isEditing ? 'bg-accent text-accent-text' : 'text-muted hover:text-primary hover:bg-tertiary'"
+            @click="editor.toggleEdit()"
+            title="Toggle edit mode"
+          >
+            {{ editor.isEditing ? 'Editing' : 'Edit' }}
+          </button>
           <button
             class="p-1.5 md:p-2 rounded transition-colors hover:bg-tertiary text-muted hover:text-primary text-xs"
             title="Import YAML config"

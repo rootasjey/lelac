@@ -12,7 +12,7 @@ export default defineNuxtConfig({
   
   app: {
     head: {
-      title: 'Vitrine',
+      title: 'Distill',
       meta: [
         { name: 'description', content: 'A lightweight, self-hosted dashboard' },
       ],

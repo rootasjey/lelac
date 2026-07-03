@@ -1,4 +1,4 @@
-# Vitrine
+# Distill
 
 A lightweight, self-hosted dashboard built with Nuxt, inspired by Glance but with visual UI customization and a future plugin marketplace.
 
@@ -6,13 +6,13 @@ A lightweight, self-hosted dashboard built with Nuxt, inspired by Glance but wit
 
 [Glance](https://github.com/glanceapp/glance) (34.8k ⭐) is an excellent self-hosted dashboard built with Go, offering widgets for RSS, Reddit, Hacker News, weather, YouTube, and more. However, its configuration is entirely YAML-file-based — there is no visual editor for layout or widget settings.
 
-Vitrine aims to fill this gap: same philosophy (lightweight, self-hosted, widget-based) but with a visual drag-and-drop editor for layout and widget configuration, while keeping YAML import/export as an alternative for power users.
+Distill aims to fill this gap: same philosophy (lightweight, self-hosted, widget-based) but with a visual drag-and-drop editor for layout and widget configuration, while keeping YAML import/export as an alternative for power users.
 
 The preferred stack is Nuxt + Cloudflare (NuxtHub), consistent with the author's existing projects [Verbatims](https://verbatims.app) and [Zimablue](https://zimablue.com).
 
 ## Key Differentiators vs Glance
 
-| Feature | Glance | Vitrine |
+| Feature | Glance | Distill |
 |---|---|---|
 | Configuration | YAML files only | Visual UI editor + YAML import/export |
 | Layout editing | Static YAML | Drag-and-drop grid editor |
