@@ -3,7 +3,7 @@ import type { ColumnConfig } from '~/types/config'
 import { SIZES } from '~/types/config'
 
 const store = useDashboardStore()
-const yaml = useYamlConfig()
+const { toast, downloadYaml, handleFileUpload } = useYamlConfig()
 const editor = useEditorStore()
 
 useHead({
@@ -23,7 +23,7 @@ function gridTemplate(columns: ColumnConfig[]) {
 
 <template>
   <div class="min-h-screen bg-primary">
-    <AppHeader @import="triggerImport" @export="yaml.downloadYaml()" />
+    <AppHeader @import="triggerImport" @export="downloadYaml()" />
 
     <main class="mx-auto max-w-7xl px-3 md:px-4 py-3 md:py-4">
       <!-- Edit mode -->
@@ -67,18 +67,20 @@ function gridTemplate(columns: ColumnConfig[]) {
       type="file"
       accept=".yaml,.yml"
       class="hidden"
-      @change="yaml.handleFileUpload"
+      @change="handleFileUpload"
     />
 
     <!-- Toast -->
-    <Teleport to="body">
-      <div
-        v-if="yaml.toast"
-        class="fixed bottom-4 right-4 px-4 py-2 rounded shadow-lg text-sm z-50 transition-all"
-        :class="yaml.toast.type === 'success' ? 'bg-accent text-accent-text' : 'bg-red-500 text-white'"
-      >
-        {{ yaml.toast.message }}
-      </div>
-    </Teleport>
+    <ClientOnly>
+      <Teleport to="body">
+        <div
+          v-if="toast"
+          class="fixed bottom-4 right-4 px-4 py-2 rounded shadow-lg text-sm z-50 transition-all"
+          :class="toast.type === 'success' ? 'bg-accent text-accent-text' : 'bg-red-500 text-white'"
+        >
+          {{ toast.message }}
+        </div>
+      </Teleport>
+    </ClientOnly>
   </div>
 </template>

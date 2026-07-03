@@ -1,7 +1,6 @@
 <script setup lang="ts">
 const { isDark, toggleTheme } = useTheme()
 const store = useDashboardStore()
-const yaml = useYamlConfig()
 const editor = useEditorStore()
 
 const emit = defineEmits<{
