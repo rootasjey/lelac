@@ -1,11 +1,11 @@
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center">
-    <div class="absolute inset-0 bg-black/50" @click="emit('close')" />
-    <div class="relative bg-widget border border-primary rounded-lg shadow-xl w-full max-w-md mx-4">
-      <div class="flex items-center justify-between px-4 py-3 border-b border-primary">
-        <h3 class="text-sm font-medium text-primary">Add Widget</h3>
+  <div class="modal-overlay">
+    <div class="modal-backdrop" @click="emit('close')" />
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Add Widget</h3>
         <button
-          class="p-1 rounded hover:bg-tertiary text-muted hover:text-primary transition-colors"
+          class="modal-close"
           @click="emit('close')"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -13,17 +13,17 @@
           </svg>
         </button>
       </div>
-      <div class="p-4 space-y-2">
+      <div class="modal-body">
         <button
           v-for="w in availableWidgets"
           :key="w.type"
-          class="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-tertiary transition-colors text-left"
+          class="widget-option"
           @click.stop="addToColumn(w.type, w.title)"
         >
-          <span class="text-lg">{{ w.icon }}</span>
-          <div>
-            <div class="text-sm font-medium text-primary">{{ w.title }}</div>
-            <div class="text-xs text-muted">{{ w.description }}</div>
+          <span class="widget-option-icon">{{ w.icon }}</span>
+          <div class="widget-option-info">
+            <div class="widget-option-title">{{ w.title }}</div>
+            <div class="widget-option-desc">{{ w.description }}</div>
           </div>
         </button>
       </div>
@@ -41,11 +41,17 @@ const emit = defineEmits<{
 }>()
 
 const availableWidgets: Array<{ type: string; title: string; icon: string; description: string }> = [
-  { type: 'calendar', title: 'Calendar', icon: '📅', description: 'Monthly calendar view' },
+  { type: 'calendar', title: 'Calendar', icon: '📅', description: 'Monthly calendar with week numbers' },
   { type: 'weather', title: 'Weather', icon: '🌤️', description: 'Weather forecast with hourly bars' },
-  { type: 'clock', title: 'Clock', icon: '🕐', description: 'Analog and digital clock' },
+  { type: 'clock', title: 'Clock', icon: '🕐', description: 'Digital clock with timezone' },
   { type: 'rss', title: 'RSS Feed', icon: '📡', description: 'RSS/Atom feed reader' },
   { type: 'links', title: 'Quick Links', icon: '🔗', description: 'Configurable link grid' },
+  { type: 'hn', title: 'Hacker News', icon: '🟠', description: 'Hacker News front page stories' },
+  { type: 'reddit', title: 'Reddit', icon: '🔴', description: 'Posts from any subreddit' },
+  { type: 'twitch', title: 'Twitch Channels', icon: '🟣', description: 'Followed Twitch channels' },
+  { type: 'videos', title: 'Videos', icon: '🎬', description: 'Recent YouTube videos' },
+  { type: 'markets', title: 'Markets', icon: '📈', description: 'Stock prices and sparklines' },
+  { type: 'releases', title: 'Releases', icon: '📦', description: 'GitHub repository releases' },
 ]
 
 function addToColumn(type: string, title: string) {
@@ -57,3 +63,113 @@ function addToColumn(type: string, title: string) {
   emit('close')
 }
 </script>
+
+<style scoped>
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal {
+  position: relative;
+  background-color: var(--widget-bg);
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 28rem;
+  margin: 0 1rem;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.modal-title {
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.modal-close:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-hover);
+}
+
+.modal-body {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.widget-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background-color 0.15s;
+}
+
+.widget-option:hover {
+  background-color: var(--bg-hover);
+}
+
+.widget-option-icon {
+  font-size: 1.125rem;
+  width: 1.5rem;
+  text-align: center;
+}
+
+.widget-option-info {
+  min-width: 0;
+}
+
+.widget-option-title {
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.widget-option-desc {
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+</style>

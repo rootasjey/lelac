@@ -1,16 +1,30 @@
 <template>
   <WidgetCard title="Calendar">
-    <div class="space-y-2">
-      <div class="flex items-center justify-between">
-        <h4 class="font-medium text-primary text-sm">{{ monthName }}</h4>
-        <span class="text-xs text-muted">Week {{ weekNumber }} · {{ year }}</span>
+    <div class="calendar">
+      <div class="calendar-header">
+        <div class="calendar-title">
+          {{ monthName }} {{ year }}
+        </div>
+        <div class="calendar-nav">
+          <button class="calendar-nav-btn" @click="prevMonth">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <span class="calendar-week">Week {{ weekNumber }}</span>
+          <button class="calendar-nav-btn" @click="nextMonth">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
       </div>
 
-      <div class="grid grid-cols-7 text-center">
+      <div class="calendar-grid">
         <div
           v-for="day in daysOfWeek"
           :key="day"
-          class="text-[10px] text-muted font-medium py-1"
+          class="calendar-day-header"
         >
           {{ day }}
         </div>
@@ -18,21 +32,13 @@
         <div
           v-for="(day, index) in calendarDays"
           :key="index"
-          class="text-xs py-1"
+          class="calendar-day"
           :class="{
-            'text-muted': !day.isCurrentMonth,
-            'text-primary': day.isCurrentMonth && !day.isToday,
+            'calendar-day-other': !day.isCurrentMonth,
+            'calendar-day-today': day.isToday,
           }"
         >
-          <span
-            v-if="day.isToday"
-            class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-accent text-accent-text text-xs font-medium"
-          >
-            {{ day.date }}
-          </span>
-          <span v-else class="inline-flex items-center justify-center w-6 h-6">
-            {{ day.date }}
-          </span>
+          <span class="calendar-day-number">{{ day.date }}</span>
         </div>
       </div>
     </div>
@@ -112,3 +118,94 @@ function nextMonth() {
   currentDate.value = newDate
 }
 </script>
+
+<style scoped>
+.calendar {
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.calendar-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.calendar-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.calendar-nav-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.calendar-week {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+}
+
+.calendar-day-header {
+  font-size: 0.625rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 0.25rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.calendar-day {
+  text-align: center;
+  padding: 0.125rem 0;
+}
+
+.calendar-day-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  border-radius: 50%;
+}
+
+.calendar-day-other .calendar-day-number {
+  color: var(--text-faint);
+}
+
+.calendar-day-today .calendar-day-number {
+  background-color: var(--calendar-today-bg);
+  color: var(--calendar-today-text);
+  font-weight: 600;
+}
+</style>

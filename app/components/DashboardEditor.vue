@@ -1,17 +1,17 @@
 <template>
-  <div v-if="store.currentPage">
+  <div v-if="store.currentPage" class="editor">
     <!-- Editor toolbar -->
-    <div class="flex items-center gap-2 mb-4 px-3 py-2 bg-secondary border border-primary rounded">
-      <span class="text-xs text-muted font-medium">Editor</span>
-      <div class="ml-auto flex items-center gap-2">
+    <div class="editor-toolbar">
+      <span class="editor-label">Editor</span>
+      <div class="editor-actions">
         <button
-          class="px-3 py-1.5 rounded text-xs font-medium bg-accent text-accent-text hover:opacity-90 transition-opacity"
+          class="editor-btn editor-btn-primary"
           @click="showAddWidget = true"
         >
           + Widget
         </button>
         <button
-          class="px-3 py-1.5 rounded text-xs font-medium text-muted hover:text-primary hover:bg-tertiary transition-colors"
+          class="editor-btn editor-btn-secondary"
           @click="editor.exitEdit()"
         >
           Done
@@ -21,20 +21,20 @@
 
     <!-- Grid -->
     <div
-      class="grid gap-4"
+      class="editor-grid"
       :style="{ gridTemplateColumns: gridTemplate(store.currentPage.columns) }"
     >
       <div
         v-for="(column, ci) in store.currentPage.columns"
         :key="ci"
-        class="space-y-2"
+        class="editor-column"
       >
         <!-- Column header -->
-        <div class="flex items-center gap-2 px-2">
-          <span class="text-[10px] text-muted uppercase tracking-wider font-medium">{{ column.size }}</span>
+        <div class="editor-column-header">
+          <span class="editor-column-size">{{ column.size }}</span>
           <button
-            class="ml-auto p-1 rounded hover:bg-tertiary text-muted hover:text-primary transition-colors"
-            :title="'Resize column'"
+            class="editor-icon-btn"
+            title="Resize column"
             @click="cycleSize(ci)"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -43,8 +43,8 @@
           </button>
           <button
             v-if="store.currentPage.columns.length > 1"
-            class="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-muted hover:text-red-500 transition-colors"
-            :title="'Remove column'"
+            class="editor-icon-btn editor-icon-btn-danger"
+            title="Remove column"
             @click="store.removeColumn(ci)"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -57,25 +57,25 @@
         <VueDraggable
           v-model="column.widgets"
           group="widgets"
-          class="space-y-2 min-h-[60px] rounded border-2 border-dashed border-transparent hover:border-accent/30 transition-colors p-1"
+          class="editor-drag-area"
           @change="onDragChange"
         >
           <div
             v-for="(widget, wi) in column.widgets"
             :key="widgetKey(widget)"
-            class="group relative bg-widget border border-primary rounded overflow-hidden"
+            class="editor-widget"
           >
             <!-- Drag handle and actions -->
-            <div class="flex items-center justify-between px-3 py-1.5 bg-secondary/50 border-b border-primary/50">
-              <div class="flex items-center gap-2 cursor-grab active:cursor-grabbing">
-                <svg class="w-3.5 h-3.5 text-muted" fill="currentColor" viewBox="0 0 24 24">
+            <div class="editor-widget-header">
+              <div class="editor-widget-handle">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M8 6h2v2H8V6zm6 0h2v2h-2V6zM8 11h2v2H8v-2zm6 0h2v2h-2v-2zm-6 5h2v2H8v-2zm6 0h2v2h-2v-2z" />
                 </svg>
-                <span class="text-xs text-muted font-mono uppercase">{{ widget.type }}</span>
+                <span class="editor-widget-type">{{ widget.type }}</span>
               </div>
               <button
-                class="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-muted hover:text-red-500 transition-all"
-                :title="'Remove widget'"
+                class="editor-icon-btn editor-icon-btn-danger editor-widget-remove"
+                title="Remove widget"
                 @click="removeWidget(ci, wi)"
               >
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -84,7 +84,7 @@
               </button>
             </div>
             <!-- Widget preview -->
-            <div class="opacity-60 pointer-events-none">
+            <div class="editor-widget-preview">
               <WidgetRenderer :widget="widget" />
             </div>
           </div>
@@ -92,7 +92,7 @@
 
         <!-- Add widget button at bottom of column -->
         <button
-          class="w-full py-2 rounded border-2 border-dashed border-primary/50 text-xs text-muted hover:text-primary hover:border-accent/50 transition-colors"
+          class="editor-add-btn"
           @click="store.addWidget(ci, { id: uid(), type: 'clock', title: 'Clock' })"
         >
           + Add Widget
@@ -100,9 +100,9 @@
       </div>
 
       <!-- Add column button -->
-      <div class="flex items-center">
+      <div class="editor-add-column">
         <button
-          class="w-full py-2 rounded border-2 border-dashed border-primary/50 text-xs text-muted hover:text-primary hover:border-accent/50 transition-colors"
+          class="editor-add-btn"
           @click="store.addColumn()"
         >
           + Column
@@ -147,7 +147,208 @@ function cycleSize(colIndex: number) {
   const col = store.currentPage?.columns[colIndex]
   if (!col) return
   const currentIndex = sizes.indexOf(col.size)
-  const nextSize = sizes[(currentIndex + 1) % sizes.length]
+  const nextSize = sizes[(currentIndex + 1) % sizes.length] as 'small' | 'medium' | 'large'
   store.setColumnSize(colIndex, nextSize)
 }
 </script>
+
+<style scoped>
+.editor {
+  margin-bottom: 1rem;
+}
+
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.625rem 0.875rem;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+}
+
+.editor-label {
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.editor-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.editor-btn {
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.375rem 0.75rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.editor-btn-primary {
+  background-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.editor-btn-primary:hover {
+  opacity: 0.9;
+}
+
+.editor-btn-secondary {
+  background-color: transparent;
+  color: var(--text-muted);
+}
+
+.editor-btn-secondary:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-hover);
+}
+
+.editor-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.editor-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.editor-column-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.25rem;
+}
+
+.editor-column-size {
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.editor-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.editor-icon-btn:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-hover);
+}
+
+.editor-icon-btn-danger:hover {
+  color: var(--negative);
+  background-color: rgba(248, 81, 73, 0.1);
+}
+
+.editor-drag-area {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 60px;
+  padding: 0.25rem;
+  border-radius: 6px;
+  border: 2px dashed transparent;
+  transition: border-color 0.15s;
+}
+
+.editor-drag-area:hover {
+  border-color: rgba(88, 166, 255, 0.3);
+}
+
+.editor-widget {
+  background-color: var(--widget-bg);
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.editor-widget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.375rem 0.625rem;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-primary);
+  opacity: 0.5;
+}
+
+.editor-widget-handle {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  cursor: grab;
+  color: var(--text-muted);
+}
+
+.editor-widget-handle:active {
+  cursor: grabbing;
+}
+
+.editor-widget-type {
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.editor-widget-remove {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.editor-widget:hover .editor-widget-remove {
+  opacity: 1;
+}
+
+.editor-widget-preview {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.editor-add-btn {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 2px dashed var(--border-primary);
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.editor-add-btn:hover {
+  color: var(--text-primary);
+  border-color: rgba(88, 166, 255, 0.5);
+}
+
+.editor-add-column {
+  display: flex;
+  align-items: flex-start;
+}
+</style>

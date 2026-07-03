@@ -1,11 +1,11 @@
 <template>
-  <div class="bg-widget border border-primary rounded overflow-hidden">
-    <div class="px-3 md:px-4 py-2.5 md:py-3">
+  <div class="widget-card">
+    <div class="widget-card-header">
       <h3 class="widget-title">
         {{ title }}
       </h3>
     </div>
-    <div class="px-3 md:px-4 pb-3 md:pb-4">
+    <div class="widget-card-body">
       <slot />
     </div>
   </div>
@@ -16,3 +16,20 @@ defineProps<{
   title: string
 }>()
 </script>
+
+<style scoped>
+.widget-card {
+  background-color: var(--widget-bg);
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.widget-card-header {
+  padding: 0.75rem 1rem 0;
+}
+
+.widget-card-body {
+  padding: 0.5rem 1rem 1rem;
+}
+</style>

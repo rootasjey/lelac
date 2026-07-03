@@ -1,5 +1,5 @@
 <template>
-  <WidgetCard title="RSS Feed">
+  <WidgetCard :title="`r/${subreddit}`">
     <div v-if="loading" class="loading">
       Loading...
     </div>
@@ -8,22 +8,24 @@
       {{ error }}
     </div>
 
-    <div v-else class="rss-list">
+    <div v-else class="reddit-list">
       <a
         v-for="(item, index) in displayItems"
-        :key="index"
-        :href="item.link"
+        :key="item.id"
+        :href="`https://reddit.com${item.permalink}`"
         target="_blank"
         rel="noopener noreferrer"
-        class="rss-item"
+        class="reddit-item"
       >
-        <div class="rss-item-title">{{ item.title }}</div>
-        <div class="rss-item-meta">{{ item.pubDate }} · {{ item.source }}</div>
+        <div class="reddit-item-title">{{ item.title }}</div>
+        <div class="reddit-item-meta">
+          {{ item.time }} · {{ item.points }} points · {{ item.comments }} comments · {{ item.domain }} ↗
+        </div>
       </a>
 
       <button
-        v-if="items.length > 3"
-        class="rss-show-more"
+        v-if="items.length > 5"
+        class="show-more"
         @click="showAll = !showAll"
       >
         {{ showAll ? 'SHOW LESS' : 'SHOW MORE' }} ▾
@@ -33,96 +35,81 @@
 </template>
 
 <script setup lang="ts">
-interface FeedItem {
+interface RedditPost {
+  id: string
   title: string
-  link: string
-  pubDate: string
-  source: string
+  permalink: string
+  points: number
+  comments: number
+  time: string
+  domain: string
 }
 
-const props = defineProps<{
-  feedUrl?: string
-}>()
+const props = withDefaults(defineProps<{
+  subreddit?: string
+}>(), {
+  subreddit: 'selfhosted'
+})
 
-const items = ref<FeedItem[]>([])
+const items = ref<RedditPost[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const showAll = ref(false)
+const editor = useEditorStore()
 
 const displayItems = computed(() => {
-  return showAll.value ? items.value : items.value.slice(0, 3)
+  return showAll.value ? items.value : items.value.slice(0, 5)
 })
 
-async function fetchFeed() {
-  if (!props.feedUrl) {
-    items.value = [
-      { title: 'Self-Host Weekly (29 May 2026)', link: '#', pubDate: '3d', source: 'selfh.st' },
-      { title: 'CSS vs. JavaScript', link: '#', pubDate: '6d', source: 'Josh Comeau' },
-      { title: 'Self-Host Weekly (22 May 2026)', link: '#', pubDate: '10d', source: 'selfh.st' },
-    ]
-    loading.value = false
-    return
-  }
-
+async function fetchReddit() {
   try {
     loading.value = true
     error.value = null
 
-    const response = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(props.feedUrl)}`)
+    const response = await fetch(`/api/reddit?subreddit=${props.subreddit}&limit=10`)
 
     if (!response.ok) {
-      throw new Error('Failed to fetch feed')
+      let msg = `HTTP ${response.status}`
+      try {
+        const err = await response.json()
+        msg = err.statusMessage || msg
+      } catch {}
+      throw new Error(msg)
     }
 
     const data = await response.json()
-
-    items.value = data.items.map((item: any) => ({
-      title: item.title,
-      link: item.link,
-      pubDate: formatTimeAgo(new Date(item.pubDate)),
-      source: new URL(item.link).hostname.replace('www.', ''),
-    }))
+    items.value = data.posts || []
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to fetch feed'
+    const msg = e instanceof Error ? e.message : 'Failed to fetch Reddit posts'
+    error.value = 'Failed to load'
+    editor.logError('reddit', msg)
   } finally {
     loading.value = false
   }
 }
 
-function formatTimeAgo(date: Date): string {
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-
-  if (days === 0) return 'Today'
-  if (days === 1) return 'Yesterday'
-  if (days < 7) return `${days}d`
-  if (days < 30) return `${Math.floor(days / 7)}w`
-  return `${Math.floor(days / 30)}mo`
-}
-
 onMounted(() => {
-  fetchFeed()
+  fetchReddit()
 })
 </script>
 
 <style scoped>
-.rss-list {
+.reddit-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.875rem;
 }
 
-.rss-item {
+.reddit-item {
   display: block;
   text-decoration: none;
 }
 
-.rss-item:hover {
+.reddit-item:hover {
   text-decoration: none;
 }
 
-.rss-item-title {
+.reddit-item-title {
   font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
   font-size: 0.8125rem;
   color: var(--link-color);
@@ -130,19 +117,19 @@ onMounted(() => {
   transition: color 0.15s;
 }
 
-.rss-item:hover .rss-item-title {
+.reddit-item:hover .reddit-item-title {
   color: var(--link-hover);
   text-decoration: underline;
 }
 
-.rss-item-meta {
+.reddit-item-meta {
   font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
   font-size: 0.6875rem;
   color: var(--text-muted);
   margin-top: 0.125rem;
 }
 
-.rss-show-more {
+.show-more {
   font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
   font-size: 0.625rem;
   font-weight: 600;
@@ -156,7 +143,7 @@ onMounted(() => {
   transition: color 0.15s;
 }
 
-.rss-show-more:hover {
+.show-more:hover {
   color: var(--text-secondary);
 }
 

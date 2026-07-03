@@ -3,59 +3,69 @@
   --bg-secondary: #ffffff;
   --bg-tertiary: #f0f0f0;
   --bg-elevated: #ffffff;
-  --border-primary: #e0e0e0;
-  --border-secondary: #d0d0d0;
+  --bg-hover: rgba(0, 0, 0, 0.04);
+  --border-primary: #e5e5e5;
+  --border-subtle: rgba(0, 0, 0, 0.06);
   --text-primary: #1a1a1a;
   --text-secondary: #333333;
   --text-tertiary: #555555;
   --text-muted: #888888;
+  --text-faint: #aaaaaa;
   --accent: #2563eb;
   --accent-text: #ffffff;
   --accent-muted: #3b82f6;
+  --accent-hover: #1d4ed8;
   --selection-bg: #2563eb;
   --selection-text: #ffffff;
-  --scrollbar-track: #e5e5e5;
+  --scrollbar-track: transparent;
   --scrollbar-thumb: #c0c0c0;
   --scrollbar-thumb-hover: #a0a0a0;
   --widget-bg: #ffffff;
-  --widget-border: #e0e0e0;
-  --widget-header-border: #e8e8e8;
+  --widget-border: #e5e5e5;
   --link-color: #2563eb;
   --link-hover: #1d4ed8;
   --link-visited: #7c3aed;
+  --positive: #16a34a;
+  --negative: #dc2626;
   --weather-bar: #94a3b8;
   --weather-bar-active: #64748b;
-  --calendar-today: #2563eb;
+  --calendar-today-bg: #2563eb;
+  --calendar-today-text: #ffffff;
 }
 
 .dark {
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
-  --bg-elevated: #1e293b;
-  --border-primary: #334155;
-  --border-secondary: #475569;
-  --text-primary: #f1f5f9;
-  --text-secondary: #e2e8f0;
-  --text-tertiary: #cbd5e1;
-  --text-muted: #64748b;
-  --accent: #60a5fa;
-  --accent-text: #0f172a;
-  --accent-muted: #93c5fd;
-  --selection-bg: #3b82f6;
+  --bg-primary: #0f1218;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #1c2333;
+  --bg-elevated: #1c2333;
+  --bg-hover: rgba(240, 246, 252, 0.04);
+  --border-primary: rgba(240, 246, 252, 0.1);
+  --border-subtle: rgba(240, 246, 252, 0.05);
+  --text-primary: #e6edf3;
+  --text-secondary: #c9d1d9;
+  --text-tertiary: #8b949e;
+  --text-muted: #484f58;
+  --text-faint: #30363d;
+  --accent: #58a6ff;
+  --accent-text: #0f1218;
+  --accent-muted: #79c0ff;
+  --accent-hover: #79c0ff;
+  --selection-bg: #264f78;
   --selection-text: #ffffff;
-  --scrollbar-track: #1e293b;
-  --scrollbar-thumb: #475569;
-  --scrollbar-thumb-hover: #64748b;
-  --widget-bg: #1e293b;
-  --widget-border: #334155;
-  --widget-header-border: #334155;
-  --link-color: #60a5fa;
-  --link-hover: #93c5fd;
-  --link-visited: #a78bfa;
-  --weather-bar: #475569;
-  --weather-bar-active: #64748b;
-  --calendar-today: #3b82f6;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: #30363d;
+  --scrollbar-thumb-hover: #484f58;
+  --widget-bg: #0d1117;
+  --widget-border: rgba(240, 246, 252, 0.1);
+  --link-color: #58a6ff;
+  --link-hover: #79c0ff;
+  --link-visited: #bc8cff;
+  --positive: #3fb950;
+  --negative: #f85149;
+  --weather-bar: #30363d;
+  --weather-bar-active: #484f58;
+  --calendar-today-bg: #58a6ff;
+  --calendar-today-text: #0f1218;
 }
 
 * {
@@ -69,13 +79,16 @@ html {
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+  font-size: 14px;
 }
 
-.font-mono {
-  font-family: 'SFMono-Regular', 'SF Mono', 'Menlo', 'Consolas', 'Liberation Mono', monospace;
+.font-mono,
+.font-family-mono {
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
 }
 
 ::-webkit-scrollbar {
@@ -101,7 +114,7 @@ body {
   color: var(--selection-text);
 }
 
-/* Responsive grid override for config-driven columns */
+/* Responsive grid override */
 @media (max-width: 767px) {
   .dashboard-grid {
     grid-template-columns: 1fr !important;
@@ -110,20 +123,8 @@ body {
 
 @media (min-width: 768px) and (max-width: 1023px) {
   .dashboard-grid {
-    /* On tablet, override any config column sizes to 2 equal columns */
     grid-template-columns: 1fr 1fr !important;
   }
-}
-
-/* Fluid spacing */
-@media (max-width: 767px) {
-  .px-responsive { padding-left: 0.75rem; padding-right: 0.75rem; }
-  .py-responsive { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-}
-
-/* Touch-friendly targets on mobile */
-@media (max-width: 767px) {
-  .touch-target { min-height: 44px; }
 }
 
 /* Semantic utility classes */
@@ -132,34 +133,42 @@ body {
 .bg-tertiary { background-color: var(--bg-tertiary); }
 .bg-elevated { background-color: var(--bg-elevated); }
 .bg-widget { background-color: var(--widget-bg); }
+.bg-hover { background-color: var(--bg-hover); }
 
 .text-primary { color: var(--text-primary); }
 .text-secondary { color: var(--text-secondary); }
 .text-tertiary { color: var(--text-tertiary); }
 .text-muted { color: var(--text-muted); }
+.text-faint { color: var(--text-faint); }
 .text-accent { color: var(--accent); }
-.text-accent-text { color: var(--accent-text); }
 .text-link { color: var(--link-color); }
+.text-positive { color: var(--positive); }
+.text-negative { color: var(--negative); }
 
 .border-primary { border-color: var(--border-primary); }
-.border-secondary { border-color: var(--border-secondary); }
+.border-subtle { border-color: var(--border-subtle); }
 
 .bg-accent { background-color: var(--accent); }
-.bg-weather-bar { background-color: var(--weather-bar); }
 
 .hover\:text-accent:hover { color: var(--link-hover); }
 .hover\:text-secondary:hover { color: var(--text-secondary); }
 .hover\:bg-tertiary:hover { background-color: var(--bg-tertiary); }
-.hover\:bg-secondary:hover { background-color: var(--bg-secondary); }
-.hover\:text-link:hover { color: var(--link-hover); }
+.hover\:bg-hover:hover { background-color: var(--bg-hover); }
 
-/* Widget title monospace style */
+/* Widget title - monospace uppercase style like Glance */
 .widget-title {
-  font-family: 'SFMono-Regular', 'SF Mono', 'Menlo', 'Consolas', 'Liberation Mono', monospace;
-  font-size: 0.7rem;
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+  font-size: 0.65rem;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Metadata text - monospace style for data */
+.text-meta {
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+  font-size: 0.75rem;
   color: var(--text-muted);
 }
 
@@ -168,7 +177,13 @@ a {
   color: var(--link-color);
   text-decoration: none;
 }
+
 a:hover {
   color: var(--link-hover);
   text-decoration: underline;
+}
+
+/* Monospace data display */
+.mono {
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
 }

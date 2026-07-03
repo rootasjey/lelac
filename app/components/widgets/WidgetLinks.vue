@@ -1,23 +1,21 @@
 <template>
   <WidgetCard title="Quick Links">
-    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+    <div class="links-grid">
       <a
         v-for="(link, index) in links"
         :key="index"
         :href="link.url"
         target="_blank"
         rel="noopener noreferrer"
-        class="flex flex-col items-center gap-2 p-3 rounded bg-tertiary hover:bg-secondary transition-colors group"
+        class="link-item"
       >
         <div
-          class="w-8 h-8 rounded flex items-center justify-center text-xs font-bold"
-          :style="{ backgroundColor: link.color + '15', color: link.color }"
+          class="link-avatar"
+          :style="{ backgroundColor: link.color + '20', color: link.color }"
         >
           {{ link.title.charAt(0) }}
         </div>
-        <span class="text-xs text-secondary group-hover:text-primary transition-colors text-center leading-tight">
-          {{ link.title }}
-        </span>
+        <span class="link-title">{{ link.title }}</span>
       </a>
     </div>
   </WidgetCard>
@@ -46,3 +44,58 @@ const defaultLinks: Link[] = [
 
 const links = computed(() => props.links || defaultLinks)
 </script>
+
+<style scoped>
+.links-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .links-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.link-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0.5rem;
+  border-radius: 6px;
+  background: var(--bg-tertiary);
+  text-decoration: none;
+  transition: background-color 0.15s;
+}
+
+.link-item:hover {
+  background: var(--bg-secondary);
+  text-decoration: none;
+}
+
+.link-avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.link-title {
+  font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+  font-size: 0.6875rem;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.link-item:hover .link-title {
+  color: var(--text-primary);
+}
+</style>

@@ -2,8 +2,21 @@ import { defineStore } from 'pinia'
 import type { DashboardConfig, PageConfig, WidgetConfig, ColumnConfig } from '~/types/config'
 import { defaultConfig } from '~/utils/defaultConfig'
 
+function loadSavedConfig(): DashboardConfig {
+  try {
+    const saved = localStorage.getItem('distill-config')
+    if (saved) {
+      const data = JSON.parse(saved)
+      if (data && typeof data === 'object' && Array.isArray(data.pages) && data.pages.length > 0) {
+        return data as DashboardConfig
+      }
+    }
+  } catch {}
+  return { ...defaultConfig }
+}
+
 export const useDashboardStore = defineStore('dashboard', () => {
-  const config = ref<DashboardConfig>({ ...defaultConfig })
+  const config = ref<DashboardConfig>(loadSavedConfig())
   const activePage = ref(0)
 
   const pages = computed(() => config.value.pages)
@@ -47,9 +60,11 @@ export const useDashboardStore = defineStore('dashboard', () => {
   function moveWidget(fromCol: number, fromIndex: number, toCol: number, toIndex: number) {
     const page = currentPage.value
     if (!page) return
-    const widget = page.columns[fromCol]?.widgets[fromIndex]
+    const fromColumn = page.columns[fromCol]
+    if (!fromColumn) return
+    const widget = fromColumn.widgets[fromIndex]
     if (!widget) return
-    page.columns[fromCol].widgets.splice(fromIndex, 1)
+    fromColumn.widgets.splice(fromIndex, 1)
     if (!page.columns[toCol]) {
       page.columns[toCol] = { size: 'medium', widgets: [] }
     }
@@ -61,7 +76,9 @@ export const useDashboardStore = defineStore('dashboard', () => {
     if (!page) return
     const col = page.columns[columnIndex]
     if (!col) return
-    const [widget] = col.widgets.splice(fromIndex, 1)
+    const widget = col.widgets[fromIndex]
+    if (!widget) return
+    col.widgets.splice(fromIndex, 1)
     col.widgets.splice(toIndex, 0, widget)
   }
 
