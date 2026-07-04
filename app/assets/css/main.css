@@ -3,6 +3,7 @@
   --bg-secondary: #ffffff;
   --bg-tertiary: #f0f0f0;
   --bg-elevated: #ffffff;
+  --bg-glass: rgba(255, 255, 255, 0.6);
   --bg-hover: rgba(0, 0, 0, 0.04);
   --border-primary: #e5e5e5;
   --border-subtle: rgba(0, 0, 0, 0.06);
@@ -38,6 +39,7 @@
   --bg-secondary: #161b22;
   --bg-tertiary: #1c2333;
   --bg-elevated: #1c2333;
+  --bg-glass: rgba(22, 27, 34, 0.5);
   --bg-hover: rgba(240, 246, 252, 0.04);
   --border-primary: rgba(240, 246, 252, 0.1);
   --border-subtle: rgba(240, 246, 252, 0.05);
