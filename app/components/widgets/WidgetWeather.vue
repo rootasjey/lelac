@@ -162,9 +162,21 @@ async function fetchWeather() {
   }
 }
 
-onMounted(() => {
-  fetchWeather()
-})
+watch(
+  () => [props.lat, props.lon],
+  () => fetchWeather(),
+  { immediate: true },
+)
+
+watch(
+  () => [props.locationName, props.locationCountry],
+  ([name, country]) => {
+    if (weather.value) {
+      weather.value.location.name = name ?? 'Unknown'
+      weather.value.location.country = country ?? ''
+    }
+  },
+)
 </script>
 
 <style scoped>

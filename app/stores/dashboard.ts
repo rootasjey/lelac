@@ -57,6 +57,14 @@ export const useDashboardStore = defineStore('dashboard', () => {
     page.columns[columnIndex]?.widgets.splice(widgetIndex, 1)
   }
 
+  function updateWidget(columnIndex: number, widgetIndex: number, updates: Partial<WidgetConfig>) {
+    const page = currentPage.value
+    if (!page) return
+    const widget = page.columns[columnIndex]?.widgets[widgetIndex]
+    if (!widget) return
+    Object.assign(widget, updates)
+  }
+
   function moveWidget(fromCol: number, fromIndex: number, toCol: number, toIndex: number) {
     const page = currentPage.value
     if (!page) return
@@ -117,6 +125,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     removePage,
     addWidget,
     removeWidget,
+    updateWidget,
     moveWidget,
     reorderWidget,
     setColumnSize,
