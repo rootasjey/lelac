@@ -3,6 +3,7 @@ import { normalizeYoutubeChannelId } from '~~/shared/utils/youtubeFeed'
 
 export type WidgetKind = 'rss' | 'weather' | 'clock' | 'youtube'
 export interface City { name: string; timezone: string }
+export type DashboardId = 'daily' | 'tech'
 export interface BoardWidget {
   id: string
   type: WidgetKind
@@ -19,6 +20,9 @@ export interface BoardWidget {
 }
 export interface BoardConfig { version: 1; widgets: BoardWidget[] }
 export const boardStorageKey = 'encascade:board:v1'
+export function dashboardStorageKey(id: DashboardId) {
+  return id === 'daily' ? boardStorageKey : `${boardStorageKey}:${id}`
+}
 export function widgetDefaults(type: WidgetKind, id: string): BoardWidget {
   const base = { id, type, x: 0, y: 0, w: 4, h: 5 }
   if (type === 'rss') return { ...base, title: 'The Conversation · À la une', w: 8, h: 9, feedUrl: 'https://theconversation.com/us/articles.atom' }
@@ -28,6 +32,19 @@ export function widgetDefaults(type: WidgetKind, id: string): BoardWidget {
 }
 export function defaultBoard(): BoardConfig {
   return { version: 1, widgets: [widgetDefaults('rss', 'news'), { ...widgetDefaults('weather', 'weather'), x: 8 }, { ...widgetDefaults('clock', 'clock'), x: 8, y: 5 }] }
+}
+export function defaultDashboard(id: DashboardId): BoardConfig {
+  if (id === 'daily') return defaultBoard()
+  return {
+    version: 1,
+    widgets: [{
+      ...widgetDefaults('youtube', 'google-developers'),
+      title: 'Google Developers',
+      channelId: 'UC_x5XG1OV2P6uZZ5FSM9Ttw',
+      w: 12,
+      h: 8,
+    }],
+  }
 }
 export function validTimezone(value: string) {
   try { new Intl.DateTimeFormat('fr-FR', { timeZone: value }).format(); return !!value } catch { return false }

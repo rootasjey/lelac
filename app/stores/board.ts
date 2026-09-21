@@ -1,22 +1,27 @@
 import { defineStore } from 'pinia'
 import type { ReadonlyLayout } from 'grid-layout-plus'
-import { boardStorageKey, defaultBoard, parseBoard } from '~/utils/boardConfig'
-import type { BoardConfig, BoardWidget } from '~/utils/boardConfig'
+import { dashboardStorageKey, defaultDashboard, parseBoard } from '~/utils/boardConfig'
+import type { BoardConfig, BoardWidget, DashboardId } from '~/utils/boardConfig'
 
 export const useBoardStore = defineStore('board', () => {
-  const config = ref<BoardConfig>(defaultBoard())
+  const activeDashboard = ref<DashboardId>('daily')
+  const config = ref<BoardConfig>(defaultDashboard('daily'))
   const ready = ref(false)
   const message = ref('')
   const history = ref<BoardConfig[]>([])
   const widgets = computed(() => config.value.widgets)
   function persist() {
-    try { localStorage.setItem(boardStorageKey, JSON.stringify(config.value)); message.value = '' }
+    try { localStorage.setItem(dashboardStorageKey(activeDashboard.value), JSON.stringify(config.value)); message.value = '' }
     catch { message.value = 'Stockage indisponible : les modifications ne sont pas enregistrées' }
   }
-  function init() {
-    if (ready.value) return
+  function init(dashboard: DashboardId = 'daily') {
+    if (ready.value && activeDashboard.value === dashboard) return
+    activeDashboard.value = dashboard
+    config.value = defaultDashboard(dashboard)
+    history.value = []
+    message.value = ''
     try {
-      const raw = localStorage.getItem(boardStorageKey)
+      const raw = localStorage.getItem(dashboardStorageKey(dashboard))
       if (raw) {
         const parsed = parseBoard(JSON.parse(raw))
         if (!parsed) throw new Error('Invalid configuration')
@@ -51,5 +56,5 @@ export const useBoardStore = defineStore('board', () => {
   }
   function removeWidget(id: string) { commit({ version: 1, widgets: widgets.value.filter(w => w.id !== id) }) }
   function undo() { const previous = history.value.pop(); if (previous) { config.value = previous; persist() } }
-  return { config, ready, message, history, widgets, init, setLayout, saveWidget, removeWidget, undo }
+  return { activeDashboard, config, ready, message, history, widgets, init, setLayout, saveWidget, removeWidget, undo }
 })

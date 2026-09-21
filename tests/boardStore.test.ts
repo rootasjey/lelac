@@ -1,7 +1,22 @@
-import { describe, it, expect } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useBoardStore } from '../app/stores/board'
-import { widgetDefaults } from '../app/utils/boardConfig'
+import { dashboardStorageKey, widgetDefaults } from '../app/utils/boardConfig'
+
+const storage = new Map<string, string>()
+
+beforeEach(() => {
+  vi.stubGlobal('localStorage', {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => storage.set(key, String(value)),
+    removeItem: (key: string) => storage.delete(key),
+  })
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+  storage.clear()
+})
 
 describe('board undo', () => {
   it('restores preferences and geometry after deletion and layout changes', () => {
@@ -28,5 +43,25 @@ describe('board undo', () => {
     expect(store.widgets[0]?.title).toBe('Nouveau titre')
     store.undo()
     expect(store.widgets[0]?.title).toBe('The Conversation · À la une')
+  })
+
+  it('keeps daily and Tech configurations separate and restores the daily board', () => {
+    setActivePinia(createPinia())
+    const store = useBoardStore()
+
+    store.init('daily')
+    store.saveWidget({ ...widgetDefaults('rss', 'daily-extra'), title: 'Lecture quotidienne', feedUrl: 'https://example.org/feed.xml', y: 10 })
+    const dailySnapshot = localStorage.getItem(dashboardStorageKey('daily'))
+
+    store.init('tech')
+    expect(store.activeDashboard).toBe('tech')
+    expect(store.widgets).toHaveLength(1)
+    expect(store.widgets[0]).toMatchObject({ id: 'google-developers', channelId: 'UC_x5XG1OV2P6uZZ5FSM9Ttw' })
+    expect(localStorage.getItem(dashboardStorageKey('tech'))).not.toBeNull()
+
+    store.init('daily')
+    expect(store.activeDashboard).toBe('daily')
+    expect(store.widgets.some(widget => widget.title === 'Lecture quotidienne')).toBe(true)
+    expect(localStorage.getItem(dashboardStorageKey('daily'))).toBe(dailySnapshot)
   })
 })

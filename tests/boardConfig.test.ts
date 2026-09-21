@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
-import { defaultBoard, parseBoard, widgetDefaults } from '../app/utils/boardConfig'
+import { dashboardStorageKey, defaultBoard, defaultDashboard, parseBoard, widgetDefaults } from '../app/utils/boardConfig'
 import { normalizeFeedUrl } from '../shared/utils/feedUrl'
 import { parseFeedXml } from '../shared/utils/feed'
 import { normalizeYoutubeChannelId, youtubeChannelHandleFromInput, youtubePublishedDateLabel } from '../shared/utils/youtubeFeed'
@@ -10,6 +10,20 @@ describe('board configuration', () => {
     const board = defaultBoard()
     expect(board.widgets[0]?.title).toBe('The Conversation · À la une')
     expect(board.widgets[0]?.feedUrl).toBe('https://theconversation.com/us/articles.atom')
+  })
+
+  it('provides a separate Tech dashboard without changing the legacy daily storage key', () => {
+    expect(dashboardStorageKey('daily')).toBe('encascade:board:v1')
+    expect(dashboardStorageKey('tech')).toBe('encascade:board:v1:tech')
+    expect(defaultDashboard('tech').widgets).toEqual([expect.objectContaining({
+      id: 'google-developers',
+      type: 'youtube',
+      title: 'Google Developers',
+      channelId: 'UC_x5XG1OV2P6uZZ5FSM9Ttw',
+      grayscale: false,
+      w: 12,
+      h: 8,
+    })])
   })
 
   it('restores geometry and widget preferences, including an empty board', () => {

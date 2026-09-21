@@ -61,15 +61,15 @@ The first deployment is for personal use. Protect configuration writes before ex
 
 ## Current dashboard
 
-The `/` route is the usable daily dashboard: add, configure, move, resize and remove RSS, weather, world-clock and YouTube widgets. Undo covers layout, settings, additions and deletions within the current session. A cancelled addition leaves no provisional widget.
+The `/` route opens Quotidien; the Tech tab opens a separate dashboard seeded with the Google Developers YouTube channel. Both boards support adding, configuring, moving, resizing and removing RSS, weather, world-clock and YouTube widgets. Undo covers layout, settings, additions and deletions within the current session. A cancelled addition leaves no provisional widget.
 
-- Configuration is validated and saved locally under `encascade:board:v1`. Legacy `distill-config` and earlier demonstration layouts are not migrated; this integration starts fresh.
+- Quotidien keeps its configuration under `encascade:board:v1`; Tech uses `encascade:board:v1:tech`. Legacy `distill-config` and earlier demonstration layouts are not migrated.
 - Desktop supports drag/resize and keyboard-accessible adjustment controls. Mobile stacks widgets in desktop reading order and supports adding, configuring and removing widgets. Geometry editing remains desktop-only.
 - RSS and Atom feeds are fetched and parsed directly by the server from public HTTPS URLs; redirects are checked, responses are limited to 2 MiB and 12 seconds, and results are cached for 5 minutes. No conversion service or API key is required. Articles link to their original sources.
 - YouTube channel feeds use the official YouTube Data API through a server endpoint. Set `NUXT_YOUTUBE_API_KEY` in a local `.env` file for `bun run dev`, or as a Cloudflare Worker secret for deployment. The key never reaches the browser; recent video metadata is cached for 15 minutes.
 - Weather and city search use Open-Meteo. Search results must be explicitly selected. Clocks accept one to three named IANA timezones.
 - Nitro source endpoints have timeouts and caches (RSS: 5 minutes; weather: 10 minutes; city search: 1 hour). Visible widgets refresh every 10 minutes. Manual refresh reads the same server cache. Previously loaded data remains visible on refresh errors during the session; source changes clear the previous source.
-- Grid rendering starts after client mounting. Nitro and Wrangler are configured for Cloudflare Workers; the production deployment, multiple dashboards, YAML editing and D1 persistence remain unfinished. Legacy widgets are not offered in the new catalog.
+- Grid rendering starts after client mounting. Nitro and Wrangler are configured for Cloudflare Workers; production deployment, creating or renaming dashboards, YAML editing and D1 persistence remain unfinished. Legacy widgets are not offered in the new catalog.
 
 ## Delivery order
 

@@ -3,7 +3,10 @@
     <div class="board-shell">
       <header class="board-header">
         <NuxtLink to="/" class="brand">encascade<span>↘</span></NuxtLink>
-        <span class="board-tab">Quotidien</span>
+        <nav class="dashboard-tabs" aria-label="Tableaux">
+          <NuxtLink to="/" class="board-tab" :class="{ active: dashboardId === 'daily' }" :aria-current="dashboardId === 'daily' ? 'page' : undefined">Quotidien</NuxtLink>
+          <NuxtLink to="/?board=tech" class="board-tab" :class="{ active: dashboardId === 'tech' }" :aria-current="dashboardId === 'tech' ? 'page' : undefined">Tech</NuxtLink>
+        </nav>
         <div class="header-actions">
           <template v-if="editing">
             <NTooltip content="Annuler la dernière modification">
@@ -113,7 +116,8 @@ import 'grid-layout-plus/style.css'
 import BoardYouTube from './BoardYouTube.vue'
 import BoardWidgetActionsMenu from './BoardWidgetActionsMenu.vue'
 import { widgetDefaults } from '~/utils/boardConfig'
-import type { BoardWidget, WidgetKind } from '~/utils/boardConfig'
+import type { BoardWidget, DashboardId, WidgetKind } from '~/utils/boardConfig'
+const props = defineProps<{ dashboardId: DashboardId }>()
 const store = useBoardStore()
 const resizeConfig: ResizeConfig = { handles: ['se'] }
 const resizeOption = { hold: 120 }
@@ -133,6 +137,13 @@ const detailOpen = ref(false)
 const youtubeAvailable = ref(new Set<string>())
 const layout = computed<Layout>(() => store.widgets.map(w => ({ i: w.id, x: w.x, y: w.y, w: w.w, h: w.h, minW: 3, minH: 4, maxH: 16 })))
 const ordered = computed(() => [...store.widgets].sort((a, b) => a.y - b.y || a.x - b.x))
+watch(() => props.dashboardId, (dashboard) => {
+  store.init(dashboard)
+  editing.value = false
+  settings.value = undefined
+  detailOpen.value = false
+  youtubeAvailable.value = new Set()
+})
 let media: MediaQueryList
 const syncMobile = () => { mobile.value = media.matches }
 function toggleEditing() { editing.value = !editing.value }
@@ -148,7 +159,7 @@ function handleShortcut(event: KeyboardEvent) {
   event.preventDefault()
   action()
 }
-onMounted(() => { store.init(); media = matchMedia('(max-width: 767px)'); syncMobile(); media.addEventListener('change', syncMobile); window.addEventListener('keydown', handleShortcut) })
+onMounted(() => { store.init(props.dashboardId); media = matchMedia('(max-width: 767px)'); syncMobile(); media.addEventListener('change', syncMobile); window.addEventListener('keydown', handleShortcut) })
 onBeforeUnmount(() => { media?.removeEventListener('change', syncMobile); window.removeEventListener('keydown', handleShortcut) })
 function configure(widget: BoardWidget) { isNew.value = false; settings.value = JSON.parse(JSON.stringify(widget)) }
 function add(type: WidgetKind) { picker.value?.close(); isNew.value = true; settings.value = widgetDefaults(type, crypto.randomUUID()) }
@@ -170,7 +181,10 @@ function setYoutubeAvailability(id: string, available: boolean) {
 .board-header { display: flex; align-items: center; gap: 36px; min-height: 62px; border-bottom: 1px solid #303036; }
 .brand { color: #ece9ee; font-size: 20px; letter-spacing: -1px; text-decoration: none; }
 .brand span { margin-left: 8px; color: #d8c58f; }
-.board-tab { align-self: stretch; display: flex; align-items: center; border-bottom: 2px solid #d8c58f; }
+.dashboard-tabs { align-self: stretch; display: flex; align-items: stretch; gap: 24px; }
+.board-tab { display: flex; align-items: center; border-bottom: 2px solid transparent; color: #85838d; text-decoration: none; transition: color 140ms ease, border-color 140ms ease; }
+.board-tab:hover, .board-tab.active { color: #e3e0e7; }
+.board-tab.active { border-color: #d8c58f; }
 .header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .native-button { font: inherit; color: #d8c58f; border: 1px solid #444149; border-radius: 4px; padding: 9px 12px; background: transparent; cursor: pointer; min-height: 40px; }
 .native-button:disabled { opacity: .45; cursor: default; }
@@ -230,7 +244,7 @@ select { background: #242329; border: 1px solid #55515d; border-radius: 3px; col
 .dialog-footer { display: flex; justify-content: flex-end; margin-top: 24px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
-@media (max-width: 767px) { .board-shell { padding: 12px 16px; } .board-header { gap: 16px; flex-wrap: wrap; padding-bottom: 12px; } .brand { font-size: 18px; } .board-tab { display: none; } .header-actions { width: 100%; } .header-actions .edit-button { margin-left: auto; } .edit-button, .header-add-button { font-size: 11px; } .board-status { min-height: 38px; } }
+@media (max-width: 767px) { .board-shell { padding: 12px 16px; } .board-header { gap: 16px; flex-wrap: wrap; padding-bottom: 0; } .brand { font-size: 18px; } .dashboard-tabs { order: 1; width: 100%; height: 40px; gap: 24px; } .header-actions { order: 2; width: 100%; } .header-actions .edit-button { margin-left: auto; } .edit-button, .header-add-button { font-size: 11px; } .board-status { min-height: 38px; } }
 .empty-board { padding: 48px 24px; text-align: center; border: 1px dashed #444149; }
 .empty-board button { margin-top: 24px; }
 .widget-catalog { display: grid; gap: 12px; }
