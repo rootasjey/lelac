@@ -33,7 +33,7 @@
             Adresse du flux RSS
             <input v-model="draft.feedUrl" type="url" required placeholder="https://exemple.fr/feed.xml" />
           </label>
-          <p class="field-hint">Flux public HTTPS. Les articles sont récupérés via rss2json.</p>
+          <p class="field-hint">Flux RSS ou Atom public en HTTPS.</p>
         </section>
       </template>
 

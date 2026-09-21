@@ -33,6 +33,8 @@
 </template>
 
 <script setup lang="ts">
+import type { FeedResult } from '~~/shared/utils/feed'
+
 interface FeedItem {
   title: string
   link: string
@@ -55,11 +57,7 @@ const displayItems = computed(() => {
 
 async function fetchFeed() {
   if (!props.feedUrl) {
-    items.value = [
-      { title: 'Self-Host Weekly (29 May 2026)', link: '#', pubDate: '3d', source: 'selfh.st' },
-      { title: 'CSS vs. JavaScript', link: '#', pubDate: '6d', source: 'Josh Comeau' },
-      { title: 'Self-Host Weekly (22 May 2026)', link: '#', pubDate: '10d', source: 'selfh.st' },
-    ]
+    items.value = []
     loading.value = false
     return
   }
@@ -68,22 +66,16 @@ async function fetchFeed() {
     loading.value = true
     error.value = null
 
-    const response = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(props.feedUrl)}`)
+    const data = await $fetch<FeedResult>('/api/sources/rss', { query: { url: props.feedUrl } })
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch feed')
-    }
-
-    const data = await response.json()
-
-    items.value = data.items.map((item: any) => ({
+    items.value = data.articles.map(item => ({
       title: item.title,
       link: item.link,
-      pubDate: formatTimeAgo(new Date(item.pubDate)),
-      source: new URL(item.link).hostname.replace('www.', ''),
+      pubDate: formatTimeAgo(new Date(item.date)),
+      source: item.source,
     }))
   } catch (e) {
-    error.value = e instanceof Error ? e.message : 'Failed to fetch feed'
+    error.value = e instanceof Error ? e.message : 'Flux RSS indisponible'
   } finally {
     loading.value = false
   }
@@ -101,9 +93,7 @@ function formatTimeAgo(date: Date): string {
   return `${Math.floor(days / 30)}mo`
 }
 
-onMounted(() => {
-  fetchFeed()
-})
+watch(() => props.feedUrl, fetchFeed, { immediate: true })
 </script>
 
 <style scoped>

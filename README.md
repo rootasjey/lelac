@@ -65,16 +65,16 @@ The `/` route is the usable daily dashboard: add, configure, move, resize and re
 
 - Configuration is validated and saved locally under `encascade:board:v1`. Legacy `distill-config` and earlier demonstration layouts are not migrated; this integration starts fresh.
 - Desktop supports drag/resize and keyboard-accessible adjustment controls. Mobile stacks widgets in desktop reading order and supports adding, configuring and removing widgets. Geometry editing remains desktop-only.
-- RSS uses the existing rss2json service through a fixed server-side endpoint (public HTTPS feeds, currently up to the provider's default ten items). Feed URLs are sent to this provider; there is no direct arbitrary-URL fetch on the application server. Provider availability and quotas apply. Articles link to their original sources.
+- RSS and Atom feeds are fetched and parsed directly by the server from public HTTPS URLs; redirects are checked, responses are limited to 2 MiB and 12 seconds, and results are cached for 5 minutes. No conversion service or API key is required. Articles link to their original sources.
 - Weather and city search use Open-Meteo. Search results must be explicitly selected. Clocks accept one to three named IANA timezones.
 - Nitro source endpoints have timeouts and caches (RSS: 5 minutes; weather: 10 minutes; city search: 1 hour). Visible widgets refresh every 10 minutes. Manual refresh reads the same server cache. Previously loaded data remains visible on refresh errors during the session; source changes clear the previous source.
-- Grid rendering starts after client mounting. Multiple dashboards, YAML editing, Workers deployment and D1 persistence remain unfinished. Legacy widgets are not offered in the new catalog.
+- Grid rendering starts after client mounting. Nitro and Wrangler are configured for Cloudflare Workers; the production deployment, multiple dashboards, YAML editing and D1 persistence remain unfinished. Legacy widgets are not offered in the new catalog.
 
 ## Delivery order
 
 1. **Polished reference dashboard:** coherent Glance-inspired design, representative real content, readable mobile layout and reliable RSS/weather/clock widgets.
 2. **Complete visual workflow:** dashboard navigation, add/configure/move/remove widgets, undo, accessible move controls and reload persistence. Evaluate the layout package only against concrete needs.
-3. **Workers deployment:** verify the production runtime, add durable configuration storage, protect writes and implement source caching and failure states.
+3. **Workers runtime and persistence:** verify the app in Wrangler locally and in production, add durable configuration storage, protect writes and review source caching and failure states.
 4. **Expand useful content:** YouTube, explicitly defined GitHub trends and country-specific cinema releases.
 
 Each milestone should be usable before expanding the scope. Validate desktop and mobile rendering, the full edit/save/reload flow, and the actual Workers runtime before claiming those paths are complete.
@@ -90,7 +90,7 @@ bun install
 bun run dev
 ```
 
-Build with `bun run build`, check types with `bun run typecheck`, and run tests once with `bun run test --run`. These commands do not deploy the app to Workers.
+`bun run dev` starts Nuxt locally. `bun run build` produces the Cloudflare Worker artifact; `bun run preview` builds it and starts Wrangler locally. `bun run deploy` builds and deploys to Cloudflare Workers. Check types with `bun run typecheck` and run tests once with `bun run test --run`.
 
 ## References
 

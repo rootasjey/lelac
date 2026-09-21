@@ -1,7 +1,8 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { defaultBoard, parseBoard, widgetDefaults } from '../app/utils/boardConfig'
-import { normalizeFeed } from '../shared/utils/feed'
+import { normalizeFeedUrl } from '../shared/utils/feedUrl'
+import { parseFeedXml } from '../shared/utils/feed'
 
 describe('board configuration', () => {
   it('uses the public demo feed for new boards', () => {
@@ -35,14 +36,63 @@ describe('board configuration', () => {
 })
 
 describe('feed normalization', () => {
-  it('filters unsafe links and normalizes provider UTC dates without guessing invalid dates', () => {
-    const data = normalizeFeed({ feed: { title: 'Example' }, items: [
-      { title: 'Article', link: 'https://example.org/post', pubDate: '2026-09-16 10:00:00' },
-      { title: 'Bad', link: 'javascript:alert(1)' },
-      { title: 'No date', link: 'https://example.org/other', pubDate: 'unknown' },
-    ] }, 'https://example.org/rss')
+  it('parses Atom entries and resolves their links relative to the feed', () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+      <feed xmlns="http://www.w3.org/2005/Atom">
+        <title>The Conversation &amp; Ideas</title>
+        <entry>
+          <title>Research &amp; public life</title>
+          <link rel="alternate" href="https://theconversation.com/us/story-1" />
+          <published>2026-09-21T01:02:00Z</published>
+        </entry>
+        <entry>
+          <title>Another story</title>
+          <link href="story-2" />
+          <updated>2026-09-20T18:00:00+02:00</updated>
+        </entry>
+      </feed>`
+    const data = parseFeedXml(xml, 'https://theconversation.com/us/articles.atom')
+    expect(data.source).toBe('The Conversation & Ideas')
     expect(data.articles).toHaveLength(2)
-    expect(data.articles[0]?.date).toBe('2026-09-16T10:00:00.000Z')
-    expect(data.articles[1]?.date).toBe('')
+    expect(data.articles[0]).toMatchObject({
+      title: 'Research & public life',
+      link: 'https://theconversation.com/us/story-1',
+      date: '2026-09-21T01:02:00.000Z',
+    })
+    expect(data.articles[1]?.link).toBe('https://theconversation.com/us/story-2')
+  })
+
+  it('parses RSS, decodes escaped links, and filters unsafe article URLs', () => {
+    const xml = `<rss version="2.0"><channel><title>Example News</title>
+      <item><title><![CDATA[An article &amp; more]]></title><link>https://example.org/story?a=1&amp;b=2</link><pubDate>Mon, 21 Sep 2026 01:02:00 GMT</pubDate></item>
+      <item><title>Unsafe</title><link>javascript:alert(1)</link></item>
+      <item><title>No date</title><link>/relative</link><pubDate>unknown</pubDate></item>
+    </channel></rss>`
+    const data = parseFeedXml(xml, 'https://example.org/rss.xml')
+    expect(data.source).toBe('Example News')
+    expect(data.articles).toHaveLength(2)
+    expect(data.articles[0]).toMatchObject({
+      title: 'An article & more',
+      link: 'https://example.org/story?a=1&b=2',
+      date: '2026-09-21T01:02:00.000Z',
+    })
+    expect(data.articles[1]).toMatchObject({ link: 'https://example.org/relative', date: '' })
+  })
+
+  it('accepts only public HTTPS feed URLs', () => {
+    expect(normalizeFeedUrl('https://theconversation.com/us/articles.atom')?.href).toBe('https://theconversation.com/us/articles.atom')
+    for (const url of [
+      'http://example.org/rss.xml',
+      'https://localhost/feed.xml',
+      'https://127.0.0.1/feed.xml',
+      'https://internal.local/feed.xml',
+      'https://user:pass@example.org/feed.xml',
+      'https://example.org:8443/feed.xml',
+    ]) expect(normalizeFeedUrl(url)).toBeNull()
+  })
+
+  it('rejects unsupported documents and XML entities declared by the feed', () => {
+    expect(() => parseFeedXml('<html><body>No feed</body></html>', 'https://example.org/feed.xml')).toThrow()
+    expect(() => parseFeedXml('<!DOCTYPE feed [<!ENTITY x "hello">]><feed>&x;</feed>', 'https://example.org/feed.xml')).toThrow()
   })
 })

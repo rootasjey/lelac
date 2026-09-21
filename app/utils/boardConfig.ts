@@ -1,3 +1,5 @@
+import { normalizeFeedUrl } from '~~/shared/utils/feedUrl'
+
 export type WidgetKind = 'rss' | 'weather' | 'clock'
 export interface City { name: string; timezone: string }
 export interface BoardWidget {
@@ -27,7 +29,7 @@ export function validTimezone(value: string) {
   try { new Intl.DateTimeFormat('fr-FR', { timeZone: value }).format(); return !!value } catch { return false }
 }
 export function validFeedUrl(value: string) {
-  try { const u = new URL(value); return u.protocol === 'https:' && !u.username && !u.password && value.length <= 2048 } catch { return false }
+  return normalizeFeedUrl(value) !== null
 }
 export function parseBoard(value: unknown): BoardConfig | null {
   if (!value || typeof value !== 'object') return null

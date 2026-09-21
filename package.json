@@ -6,7 +6,8 @@
     "build": "nuxt build",
     "dev": "nuxt dev",
     "generate": "nuxt generate",
-    "preview": "nuxt preview",
+    "preview": "bun run build && wrangler dev",
+    "deploy": "bun run build && wrangler deploy",
     "postinstall": "nuxt prepare",
     "test": "vitest",
     "typecheck": "nuxt typecheck"
@@ -31,9 +32,11 @@
     "@iconify-json/lucide": "^1.2.111",
     "@nuxt/test-utils": "^4.0.3",
     "@types/js-yaml": "^4.0.9",
+    "fast-xml-parser": "^5.11.1",
     "happy-dom": "^20.9.0",
     "typescript": "5.9.3",
     "vitest": "^4.1.8",
-    "vue-tsc": "^3.3.11"
+    "vue-tsc": "^3.3.11",
+    "wrangler": "^4.119.0"
   }
 }
