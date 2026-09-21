@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest'
 import { defaultBoard, parseBoard, widgetDefaults } from '../app/utils/boardConfig'
 import { normalizeFeedUrl } from '../shared/utils/feedUrl'
 import { parseFeedXml } from '../shared/utils/feed'
+import { normalizeYoutubeChannelId, youtubeChannelHandleFromInput, youtubePublishedDateLabel } from '../shared/utils/youtubeFeed'
 
 describe('board configuration', () => {
   it('uses the public demo feed for new boards', () => {
@@ -32,6 +33,31 @@ describe('board configuration', () => {
     const board = defaultBoard()
     board.widgets.push({ ...widgetDefaults('rss', 'second-feed'), y: 10 })
     expect(parseBoard(board)?.widgets).toHaveLength(4)
+  })
+  it('accepts a YouTube widget with a valid channel ID', () => {
+    const board = defaultBoard()
+    const widget = { ...widgetDefaults('youtube', 'videos'), channelId: 'UC_x5XG1OV2P6uZZ5FSM9Ttw', y: 9 }
+    expect(widget.h).toBe(6)
+    board.widgets.push(widget)
+    expect(parseBoard(board)?.widgets.at(-1)?.type).toBe('youtube')
+    board.widgets.at(-1)!.channelId = 'UC_not-a-valid-channel'
+    expect(parseBoard(board)).toBeNull()
+  })
+  it('persists the YouTube thumbnail grayscale preference and rejects invalid values', () => {
+    const defaults = widgetDefaults('youtube', 'videos')
+    expect(defaults.grayscale).toBe(false)
+
+    const legacyBoard = defaultBoard()
+    const legacyWidget = { ...defaults, channelId: 'UC_x5XG1OV2P6uZZ5FSM9Ttw', y: 9 }
+    delete legacyWidget.grayscale
+    legacyBoard.widgets.push(legacyWidget)
+    expect(parseBoard(legacyBoard)).not.toBeNull()
+
+    const board = defaultBoard()
+    board.widgets.push({ ...defaults, channelId: 'UC_x5XG1OV2P6uZZ5FSM9Ttw', grayscale: true, y: 9 })
+    expect(parseBoard(board)?.widgets.at(-1)).toMatchObject({ type: 'youtube', grayscale: true })
+    board.widgets.at(-1)!.grayscale = 'yes' as unknown as boolean
+    expect(parseBoard(board)).toBeNull()
   })
 })
 
@@ -94,5 +120,45 @@ describe('feed normalization', () => {
   it('rejects unsupported documents and XML entities declared by the feed', () => {
     expect(() => parseFeedXml('<html><body>No feed</body></html>', 'https://example.org/feed.xml')).toThrow()
     expect(() => parseFeedXml('<!DOCTYPE feed [<!ENTITY x "hello">]><feed>&x;</feed>', 'https://example.org/feed.xml')).toThrow()
+  })
+})
+
+describe('YouTube channel and video links', () => {
+  const channelId = 'UC_x5XG1OV2P6uZZ5FSM9Ttw'
+
+  it('accepts channel IDs, channel URLs, and YouTube Atom feed URLs', () => {
+    expect(normalizeYoutubeChannelId(channelId)).toBe(channelId)
+    expect(normalizeYoutubeChannelId(`youtube.com/channel/${channelId}/videos`)).toBe(channelId)
+    expect(normalizeYoutubeChannelId(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`)).toBe(channelId)
+  })
+
+  it('rejects handle URLs and non-YouTube hosts rather than guessing a channel', () => {
+    expect(normalizeYoutubeChannelId('https://www.youtube.com/@GoogleDevelopers')).toBeNull()
+    expect(youtubeChannelHandleFromInput('https://www.youtube.com/@GoogleDevelopers')).toBe('GoogleDevelopers')
+    expect(youtubeChannelHandleFromInput('youtube.com/@LesRevuesduMonde/videos')).toBe('LesRevuesduMonde')
+    expect(youtubeChannelHandleFromInput('@LesRevuesduMonde')).toBe('LesRevuesduMonde')
+    expect(youtubeChannelHandleFromInput('https://youtube.com.evil.example/@GoogleDevelopers')).toBeNull()
+    expect(youtubeChannelHandleFromInput('https://www.youtube.com/@bad!handle')).toBeNull()
+    expect(normalizeYoutubeChannelId(`https://youtube.com.evil.example/channel/${channelId}`)).toBeNull()
+    expect(normalizeYoutubeChannelId('UC_too-short')).toBeNull()
+  })
+
+  it('extracts video IDs only from supported YouTube links', async () => {
+    const { youtubeVideoIdFromUrl } = await import('../shared/utils/youtubeFeed')
+    expect(youtubeVideoIdFromUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ')
+    expect(youtubeVideoIdFromUrl('https://youtu.be/dQw4w9WgXcQ?t=10')).toBe('dQw4w9WgXcQ')
+    expect(youtubeVideoIdFromUrl('https://videos.example/watch?v=dQw4w9WgXcQ')).toBeNull()
+  })
+
+  it('shows recent publication dates relatively and older dates absolutely', () => {
+    const now = Date.parse('2026-09-21T10:00:00Z')
+    const sixDaysAgo = new Date(now - 6 * 24 * 60 * 60 * 1000).toISOString()
+    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString()
+
+    expect(youtubePublishedDateLabel(sixDaysAgo, now)).toBe('il y a 6 jours')
+    expect(youtubePublishedDateLabel(sevenDaysAgo, now)).toBe(
+      new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(sevenDaysAgo)),
+    )
+    expect(youtubePublishedDateLabel('not-a-date', now)).toBe('')
   })
 })

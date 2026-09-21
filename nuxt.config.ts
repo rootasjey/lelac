@@ -4,6 +4,9 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   modules: ['@pinia/nuxt', '@unocss/nuxt', '@una-ui/nuxt'],
   nitro: { preset: 'cloudflare-module' },
+  runtimeConfig: {
+    youtubeApiKey: '',
+  },
   colorMode: {
     preference: 'dark',
     fallback: 'dark',

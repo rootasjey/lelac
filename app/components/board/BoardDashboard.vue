@@ -25,15 +25,42 @@
         <GridLayout v-else-if="!mobile" ref="grid" :layout="layout" :col-num="12" :row-height="40" :gap="gridGap" :is-draggable="editing" :is-resizable="editing" :resize-config="resizeConfig" @update:layout="store.setLayout" @error="store.message = 'La grille a rencontré une erreur'" @operation-rejected="store.message = 'Cette position ou dimension n’est pas disponible'">
           <GridItem v-for="widget in store.widgets" :key="widget.id" :i="widget.id" drag-allow-from=".widget-drag-handle" :resize-option="resizeOption" class="board-grid-item">
             <div class="widget-shell">
-              <header class="widget-titlebar"><NTooltip :content="widget.title"><h2>{{ widget.title }}</h2></NTooltip><div v-if="editing" class="widget-actions"><BoardWidgetActionsMenu @configure="configure(widget)" @adjust="openAdjustments(widget.id)" /><NTooltip content="Déplacer le widget"><span class="widget-drag-handle" aria-label="Déplacer le widget" aria-hidden="true"><span class="i-ph-dots-six-vertical-bold" /></span></NTooltip></div></header>
-              <article class="board-widget" :class="{ editing }" :aria-label="widget.title"><div class="widget-body"><BoardContent :widget="widget" @more="readMore(widget.id)" /></div></article>
+              <header class="widget-titlebar">
+                <NTooltip :content="widget.title"><h2>{{ widget.title }}</h2></NTooltip>
+                <div class="widget-title-actions">
+                  <NButton v-if="widget.type === 'youtube' && youtubeAvailable.has(widget.id)" type="button" btn="ghost" class="youtube-list-action" @click="readMore(widget.id)">
+                    Voir la liste complète <span class="i-ph-arrow-up-right-bold" aria-hidden="true" />
+                  </NButton>
+                  <div v-if="editing" class="widget-actions">
+                    <BoardWidgetActionsMenu @configure="configure(widget)" @adjust="openAdjustments(widget.id)" />
+                    <NTooltip content="Déplacer le widget"><span class="widget-drag-handle" aria-label="Déplacer le widget" aria-hidden="true"><span class="i-ph-dots-six-vertical-bold" /></span></NTooltip>
+                  </div>
+                </div>
+              </header>
+              <article class="board-widget" :class="[{ editing }, { 'youtube-widget': widget.type === 'youtube' }]" :aria-label="widget.title">
+                <div class="widget-body" :class="{ 'widget-body-youtube': widget.type === 'youtube' }">
+                  <BoardContent :widget="widget" @more="readMore(widget.id)" @availability="setYoutubeAvailability(widget.id, $event)" />
+                </div>
+              </article>
             </div>
           </GridItem>
         </GridLayout>
         <div v-else class="mobile-board">
           <div v-for="widget in ordered" :key="widget.id" class="widget-shell" :style="{ height: widget.type === 'rss' ? '486px' : '306px' }">
-          <header class="widget-titlebar"><NTooltip :content="widget.title"><h2>{{ widget.title }}</h2></NTooltip><BoardWidgetActionsMenu v-if="editing" @configure="configure(widget)" @adjust="openAdjustments(widget.id)" /></header>
-            <article class="board-widget" :class="{ editing }" :aria-label="widget.title"><div class="widget-body"><BoardContent :widget="widget" @more="readMore(widget.id)" /></div></article>
+            <header class="widget-titlebar">
+              <NTooltip :content="widget.title"><h2>{{ widget.title }}</h2></NTooltip>
+              <div class="widget-title-actions">
+                <NButton v-if="widget.type === 'youtube' && youtubeAvailable.has(widget.id)" type="button" btn="ghost" class="youtube-list-action" @click="readMore(widget.id)">
+                  Voir la liste complète <span class="i-ph-arrow-up-right-bold" aria-hidden="true" />
+                </NButton>
+                <BoardWidgetActionsMenu v-if="editing" @configure="configure(widget)" @adjust="openAdjustments(widget.id)" />
+              </div>
+            </header>
+            <article class="board-widget" :class="[{ editing }, { 'youtube-widget': widget.type === 'youtube' }]" :aria-label="widget.title">
+              <div class="widget-body" :class="{ 'widget-body-youtube': widget.type === 'youtube' }">
+                <BoardContent :widget="widget" @more="readMore(widget.id)" @availability="setYoutubeAvailability(widget.id, $event)" />
+              </div>
+            </article>
           </div>
         </div>
       </template>
@@ -41,7 +68,7 @@
     <BoardSettings v-if="settings" :key="settings.id" :widget="settings" :is-new="isNew" @save="save" @close="settings = undefined" @remove="remove" />
     <dialog ref="picker" class="adjust-dialog" aria-labelledby="picker-title" @click="($event.target === picker) && picker?.close()">
       <div class="detail-heading"><h2 id="picker-title">Ajouter un widget</h2><NTooltip content="Fermer"><button class="native-button" autofocus aria-label="Fermer le catalogue" @click="picker?.close()">Fermer ×</button></NTooltip></div>
-      <div class="widget-catalog"><button class="native-button" @click="add('rss')">Actualités RSS <small>Les derniers articles de vos sites préférés</small></button><button class="native-button" @click="add('weather')">Météo <small>Les conditions et températures de votre ville</small></button><button class="native-button" @click="add('clock')">Horloges <small>L’heure dans une à trois villes</small></button></div>
+      <div class="widget-catalog"><button class="native-button" @click="add('rss')">Actualités RSS <small>Les derniers articles de vos sites préférés</small></button><button class="native-button" @click="add('youtube')">Vidéos YouTube <small>Les dernières vidéos d’une chaîne</small></button><button class="native-button" @click="add('weather')">Météo <small>Les conditions et températures de votre ville</small></button><button class="native-button" @click="add('clock')">Horloges <small>L’heure dans une à trois villes</small></button></div>
     </dialog>
     <dialog ref="adjustments" class="adjust-dialog" aria-labelledby="adjust-title" @click="($event.target === adjustments) && adjustments?.close()">
       <div class="detail-heading"><h2 id="adjust-title">Ajuster · {{ adjustedItem?.title }}</h2><NTooltip content="Fermer"><button class="native-button dialog-icon-button" autofocus aria-label="Fermer les ajustements" @click="adjustments?.close()"><span class="i-ph-x-bold" aria-hidden="true" /></button></NTooltip></div>
@@ -56,14 +83,14 @@
       v-model:open="detailOpen"
       direction="right"
       :title="detailWidget?.title ?? 'Actualités'"
-      description="Tous les articles du flux RSS"
+      :description="detailWidget?.type === 'youtube' ? 'Toutes les vidéos récentes de cette chaîne' : 'Tous les articles du flux RSS'"
       :una="{ drawerContent: 'data-[vaul-drawer-direction=right]:w-full data-[vaul-drawer-direction=right]:sm:max-w-[640px] border-l border-[#444149] bg-[#1a191f] p-0 text-[#e3e0e7] rounded-none' }"
     >
       <template #title>{{ detailWidget?.title ?? 'Actualités' }}</template>
       <template #content>
         <div class="flex h-full min-h-0 flex-col">
           <header class="detail-heading shrink-0 border-b border-[#303036] px-5 py-6 sm:px-7">
-            <div><p class="eyebrow">TOUS LES ARTICLES</p><h2>{{ detailWidget?.title }}</h2></div>
+            <div><p class="eyebrow">{{ detailWidget?.type === 'youtube' ? 'VIDÉOS RÉCENTES' : 'TOUS LES ARTICLES' }}</p><h2>{{ detailWidget?.title }}</h2></div>
             <NTooltip content="Fermer">
               <NDrawerClose as-child>
                 <NButton type="button" btn="ghost" square="10" icon label="i-ph-x-bold" aria-label="Fermer les actualités" />
@@ -72,6 +99,7 @@
           </header>
           <div class="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-7">
             <BoardFeed v-if="detailWidget?.feedUrl" :feed-url="detailWidget.feedUrl" expanded />
+            <BoardYouTube v-else-if="detailWidget?.type === 'youtube' && detailWidget.channelId" :channel-id="detailWidget.channelId" :grayscale="detailWidget.grayscale ?? false" expanded />
           </div>
         </div>
       </template>
@@ -82,6 +110,7 @@
 import { GridLayout, GridItem } from 'grid-layout-plus'
 import type { GridLayoutExpose, Layout, ResizeConfig } from 'grid-layout-plus'
 import 'grid-layout-plus/style.css'
+import BoardYouTube from './BoardYouTube.vue'
 import BoardWidgetActionsMenu from './BoardWidgetActionsMenu.vue'
 import { widgetDefaults } from '~/utils/boardConfig'
 import type { BoardWidget, WidgetKind } from '~/utils/boardConfig'
@@ -101,6 +130,7 @@ const picker = ref<HTMLDialogElement>()
 const detailId = ref('')
 const detailWidget = computed(() => store.widgets.find(w => w.id === detailId.value))
 const detailOpen = ref(false)
+const youtubeAvailable = ref(new Set<string>())
 const layout = computed<Layout>(() => store.widgets.map(w => ({ i: w.id, x: w.x, y: w.y, w: w.w, h: w.h, minW: 3, minH: 4, maxH: 16 })))
 const ordered = computed(() => [...store.widgets].sort((a, b) => a.y - b.y || a.x - b.x))
 let media: MediaQueryList
@@ -127,6 +157,12 @@ function remove() { if (settings.value) { store.removeWidget(settings.value.id);
 function openAdjustments(id: string) { adjustedId.value = id; adjustments.value?.showModal() }
 function resize(axis: 'w' | 'h', value: string) { const p = adjustedItem.value; if (p) grid.value?.resizeItem(p.id, axis === 'w' ? Number(value) : p.w, axis === 'h' ? Number(value) : p.h) }
 function readMore(id: string) { detailId.value = id; detailOpen.value = true }
+function setYoutubeAvailability(id: string, available: boolean) {
+  const next = new Set(youtubeAvailable.value)
+  if (available) next.add(id)
+  else next.delete(id)
+  youtubeAvailable.value = next
+}
 </script>
 <style scoped>
 .dashboard { --una-primary: 81% .11 90; --una-primary-foreground: 18% .02 90; background: #141418; color: #e3e0e7; min-height: 100vh; font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace; font-size: 13px; }
@@ -148,14 +184,21 @@ function readMore(id: string) { detailId.value = id; detailOpen.value = true }
 .widget-shell { height: 100%; min-height: 0; display: flex; flex-direction: column; }
 .board-widget { flex: 1 1 auto; min-height: 0; border: 1px solid #303036; background: #1a191f; border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; }
 .board-widget.editing { border-color: #766b4c; }
+.board-widget.youtube-widget { border: 0; background: transparent; border-radius: 0; }
 .widget-titlebar h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .widget-titlebar { gap: 10px; display: flex; align-items: center; justify-content: space-between; flex: 0 0 40px; padding: 0 6px; }
 .editing .widget-titlebar { cursor: grab; touch-action: none; }
 h2 { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; margin: 0; color: #bdb8c5; }
+.widget-title-actions { display: flex; min-width: 0; flex-shrink: 0; align-items: center; justify-content: flex-end; gap: 8px; }
+.youtube-list-action { min-height: 40px; padding-inline: 8px; color: #aaa7b2; font: inherit; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+.youtube-list-action:hover { color: #d8c58f; }
+.editing .widget-title-actions { cursor: default; touch-action: auto; }
+.editing .widget-title-actions button { cursor: pointer; }
 .widget-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .widget-drag-handle { width: 28px; height: 32px; display: inline-grid; place-items: center; color: #d8c58f; cursor: grab; font-size: 20px; }
 .widget-drag-handle:active { cursor: grabbing; }
 .widget-body { flex: 1; min-height: 0; padding: 0 20px; }
+.widget-body-youtube { padding-inline: 6px; }
 .widget-controls { display: grid; gap: 16px; padding: 12px 0; }
 .widget-controls label { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 12px; color: #bdb8c5; }
 select { background: #242329; border: 1px solid #55515d; border-radius: 3px; color: #ece9ee; height: 40px; width: 72px; }

@@ -61,11 +61,12 @@ The first deployment is for personal use. Protect configuration writes before ex
 
 ## Current dashboard
 
-The `/` route is the usable daily dashboard: add, configure, move, resize and remove RSS, weather and world-clock widgets. Undo covers layout, settings, additions and deletions within the current session. A cancelled addition leaves no provisional widget.
+The `/` route is the usable daily dashboard: add, configure, move, resize and remove RSS, weather, world-clock and YouTube widgets. Undo covers layout, settings, additions and deletions within the current session. A cancelled addition leaves no provisional widget.
 
 - Configuration is validated and saved locally under `encascade:board:v1`. Legacy `distill-config` and earlier demonstration layouts are not migrated; this integration starts fresh.
 - Desktop supports drag/resize and keyboard-accessible adjustment controls. Mobile stacks widgets in desktop reading order and supports adding, configuring and removing widgets. Geometry editing remains desktop-only.
 - RSS and Atom feeds are fetched and parsed directly by the server from public HTTPS URLs; redirects are checked, responses are limited to 2 MiB and 12 seconds, and results are cached for 5 minutes. No conversion service or API key is required. Articles link to their original sources.
+- YouTube channel feeds use the official YouTube Data API through a server endpoint. Set `NUXT_YOUTUBE_API_KEY` in a local `.env` file for `bun run dev`, or as a Cloudflare Worker secret for deployment. The key never reaches the browser; recent video metadata is cached for 15 minutes.
 - Weather and city search use Open-Meteo. Search results must be explicitly selected. Clocks accept one to three named IANA timezones.
 - Nitro source endpoints have timeouts and caches (RSS: 5 minutes; weather: 10 minutes; city search: 1 hour). Visible widgets refresh every 10 minutes. Manual refresh reads the same server cache. Previously loaded data remains visible on refresh errors during the session; source changes clear the previous source.
 - Grid rendering starts after client mounting. Nitro and Wrangler are configured for Cloudflare Workers; the production deployment, multiple dashboards, YAML editing and D1 persistence remain unfinished. Legacy widgets are not offered in the new catalog.
@@ -75,7 +76,7 @@ The `/` route is the usable daily dashboard: add, configure, move, resize and re
 1. **Polished reference dashboard:** coherent Glance-inspired design, representative real content, readable mobile layout and reliable RSS/weather/clock widgets.
 2. **Complete visual workflow:** dashboard navigation, add/configure/move/remove widgets, undo, accessible move controls and reload persistence. Evaluate the layout package only against concrete needs.
 3. **Workers runtime and persistence:** verify the app in Wrangler locally and in production, add durable configuration storage, protect writes and review source caching and failure states.
-4. **Expand useful content:** YouTube, explicitly defined GitHub trends and country-specific cinema releases.
+4. **Expand useful content:** explicitly defined GitHub trends and country-specific cinema releases.
 
 Each milestone should be usable before expanding the scope. Validate desktop and mobile rendering, the full edit/save/reload flow, and the actual Workers runtime before claiming those paths are complete.
 
@@ -89,6 +90,14 @@ Docker and Umbrel packaging, plugin marketplace, third-party plugin sandbox, plu
 bun install
 bun run dev
 ```
+
+To use the YouTube widget locally, enable YouTube Data API v3 in a Google Cloud project and add its API key to an ignored `.env` file:
+
+```sh
+NUXT_YOUTUBE_API_KEY=your-key
+```
+
+For a deployed Worker, add the same secret with `bunx wrangler secret put NUXT_YOUTUBE_API_KEY`. Restrict the key to YouTube Data API v3 in Google Cloud. Review YouTube's [developer policies](https://developers.google.com/youtube/terms/developer-policies) before publishing the integration.
 
 `bun run dev` starts Nuxt locally. `bun run build` produces the Cloudflare Worker artifact; `bun run preview` builds it and starts Wrangler locally. `bun run deploy` builds and deploys to Cloudflare Workers. Check types with `bun run typecheck` and run tests once with `bun run test --run`.
 

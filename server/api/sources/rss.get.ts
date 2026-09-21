@@ -9,7 +9,11 @@ export default defineCachedEventHandler(async (event) => {
 
   try {
     return await fetchPublicFeed(url.href)
-  } catch {
-    throw createError({ statusCode: 502, statusMessage: 'Ce flux est indisponible. Vérifiez son adresse ou réessayez.' })
+  } catch (cause) {
+    const status = cause instanceof Error ? cause.message.match(/Feed responded with status (\d+)/)?.[1] : undefined
+    const statusMessage = status
+      ? `La source a répondu avec HTTP ${status}.`
+      : 'La source est indisponible ou sa réponse n’est pas un flux RSS/Atom valide.'
+    throw createError({ statusCode: 502, statusMessage })
   }
 }, { maxAge: 300, swr: false })

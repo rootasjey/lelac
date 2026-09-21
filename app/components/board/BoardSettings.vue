@@ -37,6 +37,21 @@
         </section>
       </template>
 
+      <template v-if="draft.type === 'youtube'">
+        <section class="widget-settings-section">
+          <label>
+            Chaîne YouTube
+            <input v-model="youtubeChannelInput" required placeholder="ID UC… ou URL youtube.com/@handle" autocomplete="off" spellcheck="false" />
+          </label>
+          <p class="field-hint">Collez l’URL d’une chaîne YouTube ou saisissez son ID UC… ; les URL @handle sont converties automatiquement.</p>
+          <div class="youtube-grayscale-setting">
+            <label for="youtube-grayscale">Miniatures en niveaux de gris</label>
+            <NSwitch id="youtube-grayscale" v-model="draft.grayscale" size="sm" />
+          </div>
+          <p class="field-hint youtube-grayscale-hint">Applique un filtre noir et blanc aux miniatures.</p>
+        </section>
+      </template>
+
       <template v-if="draft.type === 'weather'">
         <section class="widget-settings-section weather-settings">
           <label>
@@ -118,7 +133,7 @@
             />
           </NTooltip>
           <NButton type="button" btn="soft" class="secondary-button" @click="close">Annuler</NButton>
-          <NButton type="submit" btn="solid" class="primary">{{ isNew ? 'Ajouter' : 'Enregistrer' }}</NButton>
+          <NButton type="submit" btn="solid" class="primary" :disabled="saving">{{ saving ? 'Recherche…' : isNew ? 'Ajouter' : 'Enregistrer' }}</NButton>
         </NDialogFooter>
       </form>
     </NDialogContent>
@@ -130,24 +145,32 @@ import type { BoardWidget } from '~/utils/boardConfig'
 import type { City } from '~/utils/boardConfig'
 import { worldClockOptions, type WorldClockOption } from '~/utils/worldClockCities'
 import { VueDraggable } from 'vue-draggable-plus'
+import { normalizeYoutubeChannelId, youtubeChannelHandleFromInput } from '~~/shared/utils/youtubeFeed'
 const props = defineProps<{ widget: BoardWidget; isNew?: boolean }>()
 const emit = defineEmits<{ save: [widget: BoardWidget]; close: []; remove: [] }>()
 const open = ref(true)
 const titleInput = ref<HTMLInputElement | null>(null)
 const draft = ref<BoardWidget>(JSON.parse(JSON.stringify(props.widget)))
+const youtubeChannelInput = ref(props.widget.channelId ?? '')
 const clockCities = ref<City[]>(JSON.parse(JSON.stringify(props.widget.cities ?? [])))
 const query = ref('')
 const searching = ref(false)
+const saving = ref(false)
 const error = ref('')
 const cityError = ref('')
 const results = ref<Array<{ id: number; name: string; lat: number; lon: number }>>([])
 let controller: AbortController | undefined
+let youtubeResolveController: AbortController | undefined
 let request = 0
 let closeRequested = false
-onBeforeUnmount(() => controller?.abort())
+onBeforeUnmount(() => {
+  controller?.abort()
+  youtubeResolveController?.abort()
+})
 function requestClose() {
   if (closeRequested) return
   closeRequested = true
+  youtubeResolveController?.abort()
   emit('close')
 }
 function handleOpenChange(value: boolean) {
@@ -203,13 +226,39 @@ async function searchCities() {
   } catch { if (id === request) cityError.value = 'Recherche indisponible. Réessayez.' }
   finally { if (id === request) searching.value = false }
 }
-function save() {
+async function save() {
+  if (saving.value) return
   error.value = ''
   draft.value.title = draft.value.title.trim()
   if (!draft.value.title) { error.value = 'Donnez un titre au widget.'; return }
   if (draft.value.type === 'rss') {
     draft.value.feedUrl = draft.value.feedUrl?.trim()
     if (!validFeedUrl(draft.value.feedUrl ?? '')) { error.value = 'Saisissez une adresse de flux HTTPS valide.'; return }
+  }
+  if (draft.value.type === 'youtube') {
+    let channelId = normalizeYoutubeChannelId(youtubeChannelInput.value)
+    if (!channelId && !youtubeChannelHandleFromInput(youtubeChannelInput.value)) {
+      error.value = 'Saisissez un ID de chaîne UC… ou une URL YouTube /@handle.'
+      return
+    }
+    if (!channelId) {
+      saving.value = true
+      youtubeResolveController = new AbortController()
+      try {
+        const result = await $fetch<{ channelId: string }>('/api/sources/youtube-channel', {
+          query: { url: youtubeChannelInput.value.trim() },
+          signal: youtubeResolveController.signal,
+        })
+        channelId = normalizeYoutubeChannelId(result.channelId)
+      } catch {
+        error.value = 'Impossible de résoudre cette chaîne. Vérifiez son URL publique ou saisissez son ID UC….'
+        return
+      } finally {
+        saving.value = false
+      }
+    }
+    if (!channelId) { error.value = 'YouTube a renvoyé un identifiant de chaîne invalide.'; return }
+    draft.value.channelId = channelId
   }
   if (draft.value.type === 'clock') {
     const cities = clockCities.value.map(city => ({ name: city.name.trim(), timezone: city.timezone.trim() }))
@@ -237,6 +286,9 @@ function save() {
 .settings-dialog-content .widget-settings-section { margin-top: 28px; }
 .settings-dialog-content .widget-settings-section > label { margin: 0; }
 .settings-dialog-content .widget-settings-section .field-hint { margin: 12px 0 0; }
+.settings-dialog-content .youtube-grayscale-setting { display: flex; min-height: 40px; align-items: center; justify-content: space-between; gap: 16px; margin-top: 24px; }
+.settings-dialog-content .youtube-grayscale-setting label { margin: 0; color: #bdb8c5; cursor: pointer; }
+.settings-dialog-content .youtube-grayscale-hint { margin-top: 4px; }
 .settings-dialog-content .weather-settings .selected-location { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 12px 0 0; }
 .settings-dialog-content .weather-settings .selected-location span { color: #85838d; font-size: 10px; letter-spacing: .4px; text-transform: uppercase; }
 .settings-dialog-content .weather-settings .selected-location strong { color: #bdb8c5; font-weight: 500; }
