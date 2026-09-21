@@ -32,25 +32,29 @@
         <!-- Column header -->
         <div class="editor-column-header">
           <span class="editor-column-size">{{ column.size }}</span>
+          <NTooltip content="Redimensionner la colonne">
           <button
             class="editor-icon-btn"
-            title="Resize column"
+            aria-label="Redimensionner la colonne"
             @click="cycleSize(ci)"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
             </svg>
           </button>
+          </NTooltip>
+          <NTooltip v-if="store.currentPage.columns.length > 1" content="Supprimer la colonne">
           <button
             v-if="store.currentPage.columns.length > 1"
             class="editor-icon-btn editor-icon-btn-danger"
-            title="Remove column"
+            aria-label="Supprimer la colonne"
             @click="store.removeColumn(ci)"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
           </button>
+          </NTooltip>
         </div>
 
         <!-- Draggable widget list -->
@@ -74,9 +78,10 @@
                 <span class="editor-widget-type">{{ widget.type }}</span>
               </div>
               <div class="editor-widget-actions">
+                <NTooltip content="Configurer le widget">
                 <button
                   class="editor-icon-btn editor-widget-settings"
-                  title="Configure widget"
+                  aria-label="Configurer le widget"
                   @click="openSettings(ci, wi)"
                 >
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -84,15 +89,18 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                 </button>
+                </NTooltip>
+                <NTooltip content="Supprimer le widget">
                 <button
                   class="editor-icon-btn editor-icon-btn-danger editor-widget-remove"
-                  title="Remove widget"
+                  aria-label="Supprimer le widget"
                   @click="removeWidget(ci, wi)"
                 >
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
+                </NTooltip>
               </div>
             </div>
             <!-- Widget preview -->

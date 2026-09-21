@@ -1,5 +1,5 @@
 {
-  "name": "distill",
+  "name": "encascade",
   "type": "module",
   "private": true,
   "scripts": {
@@ -8,7 +8,8 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "test": "vitest"
+    "test": "vitest",
+    "typecheck": "nuxt typecheck"
   },
   "dependencies": {
     "@iconify-json/openmoji": "^1.2.27",
@@ -19,6 +20,7 @@
     "@pinia/nuxt": "^0.11.3",
     "@una-ui/nuxt": "^1.0.0-alpha.17",
     "@unocss/nuxt": "^66.7.0",
+    "grid-layout-plus": "2.0.0-beta.0",
     "js-yaml": "^4.2.0",
     "nuxt": "^4.4.6",
     "vue": "^3.5.34",
@@ -30,6 +32,8 @@
     "@nuxt/test-utils": "^4.0.3",
     "@types/js-yaml": "^4.0.9",
     "happy-dom": "^20.9.0",
-    "vitest": "^4.1.8"
+    "typescript": "5.9.3",
+    "vitest": "^4.1.8",
+    "vue-tsc": "^3.3.11"
   }
 }

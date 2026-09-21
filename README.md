@@ -1,152 +1,105 @@
-# Distill
+# Encascade
 
-A lightweight, self-hosted dashboard built with Nuxt, inspired by Glance but with visual UI customization and a future plugin marketplace.
+Personal dashboards for your interests, composed and edited visually. Built with Nuxt, Vue, UnaUI and UnoCSS, inspired by [Glance](https://github.com/glanceapp/glance).
 
-## Motivation
+## Product direction
 
-[Glance](https://github.com/glanceapp/glance) (34.8k ⭐) is an excellent self-hosted dashboard built with Go, offering widgets for RSS, Reddit, Hacker News, weather, YouTube, and more. However, its configuration is entirely YAML-file-based — there is no visual editor for layout or widget settings.
+Encascade brings news, videos and everyday information into calm, readable dashboards. Its main argument is visual editing: add a source, configure its widget and rearrange the page directly in the app. Deployment to your own Cloudflare Workers account is the second core goal.
 
-Distill aims to fill this gap: same philosophy (lightweight, self-hosted, widget-based) but with a visual drag-and-drop editor for layout and widget configuration, while keeping YAML import/export as an alternative for power users.
+Glance is the visual reference for composition, spacing, typography and restrained color. Encascade accepts additional JavaScript and runtime overhead in exchange for a better editing experience. Responsiveness and sensible resource usage still matter; matching Glance's binary size or performance is not a release requirement.
 
-The preferred stack is Nuxt + Cloudflare (NuxtHub), consistent with the author's existing projects [Verbatims](https://verbatims.app) and [Zimablue](https://zimablue.com).
+## Initial scope
 
-## Key Differentiators vs Glance
+- Multiple personal dashboards with working navigation.
+- A polished reading experience on desktop and mobile.
+- Visual widget settings and drag-and-drop arrangement within a constrained layout.
+- Persistent dashboard configuration.
+- Cloudflare Workers as the only initial deployment target.
 
-| Feature | Glance | Distill |
-|---|---|---|
-| Configuration | YAML files only | Visual UI editor + YAML import/export |
-| Layout editing | Static YAML | Drag-and-drop grid editor |
-| Widget config | YAML fields | In-UI forms per widget type |
-| Plugin system | Built-in widgets only | Marketplace of installable plugins (long-term) |
-| Deployment | Docker | Triple: Cloudflare (NuxtHub) + Docker + Umbrel app |
-| Stack | Go + HTML templates | Nuxt 4 + Vue 3 + TypeScript |
+Prioritize complete everyday workflows over the number of widget types.
 
-## Tech Stack
+### Intended dashboards
 
-- **Framework:** Nuxt 4 + Vue 3 + TypeScript
-- **Styling:** UnoCSS + UnaUI
-- **Drag-and-drop:** vue-draggable-plus or @dnd-kit (Vue adapter)
-- **Cloudflare deployment:** NuxtHub (D1 for database, KV for config/layout cache)
-- **Docker deployment:** SQLite + filesystem
-- **Storage abstraction:** Interface-based adapter pattern (see Architecture)
+| Dashboard | Intended content |
+|---|---|
+| Daily | Selected RSS news, local weather, clocks for several cities |
+| Tech | RSS feeds, weekly GitHub trends, recent uploads from selected YouTube channels |
+| Cinema | Weekly film releases for a selected country |
 
-## Architecture
+The first polished dashboard should establish the design with RSS, weather and world clocks. YouTube, GitHub trends and cinema follow once that foundation works reliably. Define the GitHub trend source and ranking period explicitly; tracked repository releases are a separate feature. Cinema releases and local screening schedules are also separate scopes.
 
-### Triple Deployment — Storage Abstraction
+## Design and editing
 
-The core architectural challenge is supporting three deployment targets with different storage backends. The solution is a storage abstraction layer:
+- Let content lead: a dominant reading column, quieter supporting columns, subtle surfaces and a restrained accent.
+- Keep metadata readable and use consistent spacing and typography across widgets.
+- Adapt presentation to content: lists, clocks and video galleries need different treatments.
+- Keep explicit reading and editing modes, with faithful previews while editing.
+- Offer a small set of column widths and predictable drop positions rather than pixel-level free placement.
+- Support undo for moves and deletion, plus a non-drag move command for keyboard and touch use.
+- Preserve a meaningful mobile reading order.
+- Show sources and update times; distinguish stale data, empty results and failures. Keep previously loaded content when a refresh fails where possible.
 
+### Drag-and-drop approach
+
+Use a Vue package for pointer interactions and build Encascade's editing UI around it. Do not implement a custom drag engine.
+
+The main dashboard now uses `grid-layout-plus` pinned to `2.0.0-beta.0`, with a 12-column layout and fixed user-selected heights. Keep grid configuration objects stable during interactions. The earlier `vue-draggable-plus` components remain unused by the main route.
+
+Widgets have independent IDs, configuration and geometry. The app persists its own versioned model rather than the package's internal state. RSS capacity is measured from rendered row heights; a separate reading dialog exposes the rest of the feed.
+
+## Technical direction
+
+- **UI:** Nuxt 4, Vue 3, TypeScript, UnaUI and UnoCSS.
+- **State:** Pinia with stable widget identifiers and validated configuration.
+- **Deployment target:** Nuxt/Nitro on Cloudflare Workers.
+- **Planned persistence:** D1 for dashboard and widget configuration; browser storage remains the current prototype mechanism.
+- **Data fetching:** server-side source adapters with appropriate caching, timeouts and independent widget failure handling. Choose a cache backend when the first real integrations establish the requirements.
+
+Keep the architecture focused on Workers. NuxtHub can be evaluated as an integration convenience; it is not a prerequisite for the product. There is no initial multi-platform storage abstraction.
+
+The first deployment is for personal use. Protect configuration writes before exposing a deployed instance; a multi-user account system is outside the initial scope.
+
+## Current dashboard
+
+The `/` route is the usable daily dashboard: add, configure, move, resize and remove RSS, weather and world-clock widgets. Undo covers layout, settings, additions and deletions within the current session. A cancelled addition leaves no provisional widget.
+
+- Configuration is validated and saved locally under `encascade:board:v1`. Legacy `distill-config` and earlier demonstration layouts are not migrated; this integration starts fresh.
+- Desktop supports drag/resize and keyboard-accessible adjustment controls. Mobile stacks widgets in desktop reading order and supports adding, configuring and removing widgets. Geometry editing remains desktop-only.
+- RSS uses the existing rss2json service through a fixed server-side endpoint (public HTTPS feeds, currently up to the provider's default ten items). Feed URLs are sent to this provider; there is no direct arbitrary-URL fetch on the application server. Provider availability and quotas apply. Articles link to their original sources.
+- Weather and city search use Open-Meteo. Search results must be explicitly selected. Clocks accept one to three named IANA timezones.
+- Nitro source endpoints have timeouts and caches (RSS: 5 minutes; weather: 10 minutes; city search: 1 hour). Visible widgets refresh every 10 minutes. Manual refresh reads the same server cache. Previously loaded data remains visible on refresh errors during the session; source changes clear the previous source.
+- Grid rendering starts after client mounting. Multiple dashboards, YAML editing, Workers deployment and D1 persistence remain unfinished. Legacy widgets are not offered in the new catalog.
+
+## Delivery order
+
+1. **Polished reference dashboard:** coherent Glance-inspired design, representative real content, readable mobile layout and reliable RSS/weather/clock widgets.
+2. **Complete visual workflow:** dashboard navigation, add/configure/move/remove widgets, undo, accessible move controls and reload persistence. Evaluate the layout package only against concrete needs.
+3. **Workers deployment:** verify the production runtime, add durable configuration storage, protect writes and implement source caching and failure states.
+4. **Expand useful content:** YouTube, explicitly defined GitHub trends and country-specific cinema releases.
+
+Each milestone should be usable before expanding the scope. Validate desktop and mobile rendering, the full edit/save/reload flow, and the actual Workers runtime before claiming those paths are complete.
+
+## Deferred
+
+Docker and Umbrel packaging, plugin marketplace, third-party plugin sandbox, plugin SDK, multi-user accounts and public dashboard sharing are outside the initial scope. Revisit them only when actual usage justifies the cost.
+
+## Local development
+
+```sh
+bun install
+bun run dev
 ```
-┌─────────────────────────┐
-│   Widget / Dashboard    │
-│      Components         │
-└────────────┬────────────┘
-             │
-     ┌───────▼────────┐
-     │  Storage        │
-     │  Interface      │
-     │  (abstract)     │
-     └──┬──────┬───────┘
-        │      │
-   ┌────▼───┐ ┌───▼────┐ ┌──────────┐
-   │ Cloudflare │ │ Docker    │ │ Umbrel    │
-   │ D1 + KV    │ │ SQLite +  │ │ SQLite +  │
-   │            │ │ FS        │ │ Docker vol│
-   └────────────┘ └──────────┘ └──────────┘
-```
 
-- **Cloudflare mode:** D1 stores dashboard configs, widget data, and plugin registry. KV caches layout snapshots and frequently accessed widget content.
-- **Docker mode:** SQLite replaces D1, local filesystem replaces KV. Same interface, different implementation.
-- **Umbrel mode:** Runs inside an Umbrel Docker container with persistent volumes for SQLite storage. Same interface, mounted via Docker volumes.
-- **Nuxt modules pattern:** The right adapter is loaded automatically based on the runtime environment (Cloudflare Workers vs. Node.js). This is a well-established pattern in the Nuxt ecosystem (e.g., `hubStorage`, `hubDatabase` in NuxtHub).
+Build with `bun run build`, check types with `bun run typecheck`, and run tests once with `bun run test --run`. These commands do not deploy the app to Workers.
 
-### Widget System
+## References
 
-Each widget is an isolated Vue component implementing a standard interface:
-
-```ts
-interface DashboardWidget {
-  id: string
-  type: string
-  title: string
-  config: Record<string, unknown>
-  refreshInterval?: number  // in seconds
-}
-```
-
-**Built-in widgets planned for MVP:**
-
-- **RSS Feed** — fetch and display RSS/Atom feeds
-- **Weather** — Open-Meteo API (no API key needed)
-- **Clock** — analog/digital with timezone support
-- **Quick Links** — configurable link grid
-- **Markdown** — custom text/notes widget
-
-## Roadmap
-
-### Phase 1 — MVP (1-2 weeks)
-
-- Dashboard grid layout (CSS Grid / UnoCSS)
-- 3-4 basic widgets: RSS, weather, clock, links
-- YAML import/export for dashboard config
-- Static deployment (no persistence yet)
-- Responsive design (mobile + desktop)
-
-### Phase 2 — Visual Editor (1-2 weeks)
-
-- Drag-and-drop layout editor (add/remove/reorder widgets)
-- Widget configuration UI (forms, color picker, sizing)
-- Theme system (light/dark + custom themes)
-- Layout templates (predefined dashboard layouts)
-
-### Phase 3 — Persistence (1 week)
-
-- Storage abstraction layer
-- Cloudflare adapter: D1 + NuxtHub KV
-- Docker adapter: SQLite + filesystem
-- Auto-save layout and config changes
-- Dashboard state restore on reload
-
-### Phase 4 — Plugin System (2-3 weeks)
-
-- Plugin registry (manifest format, versioning)
-- Plugin sandbox (security isolation for third-party widgets)
-- In-app plugin browser and installer
-- Plugin development documentation and SDK
-
-### Phase 5 — Multi-user (1 week)
-
-- Basic authentication (password or OAuth)
-- Per-user dashboard layouts and preferences
-- Shared/public dashboards option
-
-### Estimated Effort
-
-| Phase | Duration | Deliverable |
-|---|---|---|
-| MVP | 1-2 weeks | Functional dashboard with basic widgets |
-| Visual Editor | 1-2 weeks | Drag-and-drop editing, themes |
-| Persistence | 1 week | Cloudflare + Docker storage |
-| Plugin System | 2-3 weeks | Marketplace UI, SDK, sandbox |
-| Multi-user | 1 week | Auth, per-user layouts |
-
-## Design Principles
-
-- **Lightweight first** — no bloated dependencies, fast initial load
-- **Visual by default** — every setting should be editable in the UI, YAML is optional
-- **Deploy anywhere** — Cloudflare Workers, Docker, or Umbrel app, same codebase
-- **Widget-centric** — each widget is self-contained, independent, shareable
-- **Progressive complexity** — start simple, add features incrementally
-
-## Links & References
-
-- [Glance](https://github.com/glanceapp/glance) — inspiration source (Go, YAML-based, 34.8k ⭐)
-- [NuxtHub](https://hub.nuxt.com) — Cloudflare deployment for Nuxt
-- [vue-draggable-plus](https://github.com/Alfred-Skyblue/vue-draggable-plus) — Vue 3 drag-and-drop library
-- [Open-Meteo](https://open-meteo.com) — free weather API (no key needed)
-- [Verbatims](https://verbatims.app) — related Nuxt project by the same author
-- [Zimablue](https://zimablue.com) — related Nuxt project by the same author
+- [Glance](https://github.com/glanceapp/glance)
+- [Nuxt on Cloudflare Workers](https://developers.cloudflare.com/workers/framework-guides/web-apps/more-web-frameworks/nuxt/)
+- [Vue Draggable Plus: moving between lists](https://vue-draggable-plus.pages.dev/en/demo/tow-list/)
+- [Grid Layout Plus releases](https://github.com/qmhc/grid-layout-plus/releases)
+- [Grid Layout Plus v2 migration](https://docs-next--grid-layout-plus.netlify.app/guide/migration)
 
 ## License
 
-TBD — likely MIT or Apache 2.0 for the core, with potential dual licensing for the marketplace.
+[MIT](LICENSE).

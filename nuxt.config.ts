@@ -3,6 +3,12 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   modules: ['@pinia/nuxt', '@unocss/nuxt', '@una-ui/nuxt'],
+  colorMode: {
+    preference: 'dark',
+    fallback: 'dark',
+    classSuffix: '',
+    storageKey: 'encascade-color-mode',
+  },
 
   components: [
     { path: '~/components', pathPrefix: false },
@@ -12,9 +18,9 @@ export default defineNuxtConfig({
   
   app: {
     head: {
-      title: 'Distill',
+      title: 'Encascade',
       meta: [
-        { name: 'description', content: 'A lightweight, self-hosted dashboard' },
+        { name: 'description', content: 'Vos sources, organisées en tableaux personnalisables' },
       ],
     },
   },
