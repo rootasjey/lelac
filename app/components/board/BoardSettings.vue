@@ -110,21 +110,20 @@
             label-key="name"
             value-key="inseeCode"
             :ignore-filter="true"
+            :_combobox-input="{
+              class: 'cinema-location-input',
+              placeholder: 'Rechercher une commune…',
+              autocomplete: 'off',
+              autofocus: true,
+              modelValue: cinemaQuery,
+              displayValue: cinemaInputDisplayValue,
+              'onUpdate:modelValue': updateCinemaQuery,
+            }"
             :_combobox-list="{ class: 'cinema-combobox-list', align: 'start', position: 'popper' }"
             :_combobox-viewport="{ class: 'max-h-60 overflow-y-auto' }"
             text-empty="Aucune commune trouvée."
             @update:model-value="selectCinemaLocation"
           >
-            <template #input-wrapper>
-              <NComboboxInput
-                v-model="cinemaQuery"
-                :display-value="cinemaInputDisplayValue"
-                class="cinema-location-input"
-                placeholder="Rechercher une commune…"
-                autocomplete="off"
-                autofocus
-              />
-            </template>
             <template #item="{ item }">
               <span class="cinema-location-option"><span>{{ item.name }}</span><small>{{ item.department }}</small></span>
             </template>
@@ -240,6 +239,9 @@ const selectedCinemaOption = computed<CinemaLocationOption | undefined>(() => {
   return location ? { ...location, population: 0 } : undefined
 })
 const cinemaInputDisplayValue = (value: CinemaLocationOption | undefined) => value?.name ?? ''
+function updateCinemaQuery(value: string) {
+  cinemaQuery.value = value
+}
 const cinemaOptions = computed(() => {
   const search = cinemaQuery.value.trim().toLocaleLowerCase('fr-FR')
   const selected = selectedCinemaOption.value

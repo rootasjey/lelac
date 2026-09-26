@@ -16,6 +16,7 @@ const SELECTED_FIELDS = [
 interface CinemaApiResponse {
   results?: RawCinemaShowing[]
   total?: number
+  next?: string
 }
 
 const fetchNationalSchedule = defineCachedFunction(async (): Promise<{ rows: RawCinemaShowing[]; fetchedAt: string }> => {
@@ -24,14 +25,44 @@ const fetchNationalSchedule = defineCachedFunction(async (): Promise<{ rows: Raw
     qs: 'showstart:>=now',
     select: SELECTED_FIELDS,
   })
-  const response = await $fetch<CinemaApiResponse>(`${CINEMA_API}?${query}`, {
-    timeout: 12_000,
-    retry: 0,
-    headers: { Accept: 'application/json', 'User-Agent': 'Encascade cinema schedule widget' },
-  })
-  const rows = Array.isArray(response.results) ? response.results : []
-  if (response.total !== undefined && response.total > rows.length) {
-    throw new Error(`SCARE returned ${rows.length} of ${response.total} upcoming showings.`)
+  const rows: RawCinemaShowing[] = []
+  const visitedPages = new Set<string>()
+  let nextPage: string | undefined = `${CINEMA_API}?${query}`
+  let expectedTotal: number | undefined
+
+  while (nextPage) {
+    if (visitedPages.has(nextPage) || visitedPages.size >= 100) {
+      throw new Error('SCARE pagination did not finish safely.')
+    }
+    visitedPages.add(nextPage)
+
+    const response: CinemaApiResponse = await $fetch<CinemaApiResponse>(nextPage, {
+      timeout: 12_000,
+      retry: 0,
+      headers: { Accept: 'application/json', 'User-Agent': 'Encascade cinema schedule widget' },
+    })
+    if (response.total !== undefined) {
+      if (expectedTotal !== undefined && expectedTotal !== response.total) {
+        throw new Error('SCARE result count changed during pagination.')
+      }
+      expectedTotal = response.total
+    }
+    if (Array.isArray(response.results)) rows.push(...response.results)
+
+    if (response.next) {
+      const nextUrl: URL = new URL(response.next)
+      const apiUrl = new URL(CINEMA_API)
+      if (nextUrl.origin !== apiUrl.origin || !/^\/data-fair\/api\/v1\/datasets\/[^/]+\/lines$/.test(nextUrl.pathname)) {
+        throw new Error('SCARE returned an unexpected pagination URL.')
+      }
+      nextPage = nextUrl.href
+    } else {
+      nextPage = undefined
+    }
+  }
+
+  if (expectedTotal !== undefined && expectedTotal > rows.length) {
+    throw new Error(`SCARE returned ${rows.length} of ${expectedTotal} upcoming showings.`)
   }
   return { rows, fetchedAt: new Date().toISOString() }
 }, {
