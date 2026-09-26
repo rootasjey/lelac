@@ -59,8 +59,10 @@ export function youtubeVideoIdFromUrl(input: string): string | null {
   }
 }
 
-export function youtubeThumbnailUrl(videoId: string): string {
-  return `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/mqdefault.jpg`
+export function youtubeThumbnailCandidates(videoId: string): string[] {
+  const encodedId = encodeURIComponent(videoId)
+  return ['maxresdefault', 'sddefault', 'hqdefault', 'mqdefault', 'default']
+    .map(size => `https://i.ytimg.com/vi/${encodedId}/${size}.jpg`)
 }
 
 export function youtubePublishedDateLabel(input: string, now = Date.now()): string {

@@ -71,7 +71,8 @@ export function safeArticleUrl(input: unknown, baseUrl?: string): string | null 
 }
 
 export function parseFeedXml(xml: string, feedUrl: string): FeedResult {
-  if (!xml.trim() || /<!DOCTYPE|<!ENTITY/i.test(xml)) throw new Error('Unsupported XML document')
+  const markup = xml.replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, '').replace(/<!--[\s\S]*?-->/g, '')
+  if (!xml.trim() || /<!DOCTYPE|<!ENTITY/i.test(markup)) throw new Error('Unsupported XML document')
 
   const root = asObject(parser.parse(xml))
   const atomFeed = asObject(root?.feed)

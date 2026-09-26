@@ -1,9 +1,11 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
-import { dashboardStorageKey, defaultBoard, defaultDashboard, parseBoard, widgetDefaults } from '../app/utils/boardConfig'
+import { dashboardStorageKey, defaultBoard, defaultDashboard, parseBoard, upgradeDashboardDefaults, widgetDefaults } from '../app/utils/boardConfig'
 import { normalizeFeedUrl } from '../shared/utils/feedUrl'
 import { parseFeedXml } from '../shared/utils/feed'
-import { normalizeYoutubeChannelId, youtubeChannelHandleFromInput, youtubePublishedDateLabel } from '../shared/utils/youtubeFeed'
+import { normalizeYoutubeChannelId, youtubeChannelHandleFromInput, youtubePublishedDateLabel, youtubeThumbnailCandidates } from '../shared/utils/youtubeFeed'
+import { parseGitHubTrendingDevelopersHtml, parseGitHubTrendingHtml } from '../shared/utils/githubTrending'
+import { normalizeHackerNewsStory } from '../shared/utils/hackerNews'
 
 describe('board configuration', () => {
   it('uses the public demo feed for new boards', () => {
@@ -15,7 +17,8 @@ describe('board configuration', () => {
   it('provides a separate Tech dashboard without changing the legacy daily storage key', () => {
     expect(dashboardStorageKey('daily')).toBe('encascade:board:v1')
     expect(dashboardStorageKey('tech')).toBe('encascade:board:v1:tech')
-    expect(defaultDashboard('tech').widgets).toEqual([expect.objectContaining({
+    const tech = defaultDashboard('tech')
+    expect(tech.widgets).toEqual([expect.objectContaining({
       id: 'google-developers',
       type: 'youtube',
       title: 'Google Developers',
@@ -23,7 +26,97 @@ describe('board configuration', () => {
       grayscale: false,
       w: 12,
       h: 8,
+    }), expect.objectContaining({
+      id: 'github-blog',
+      type: 'rss',
+      title: 'GitHub Blog',
+      feedUrl: 'https://github.blog/feed/',
+      x: 0,
+      y: 8,
+      w: 6,
+    }), expect.objectContaining({
+      id: 'cloudflare-workers-ai',
+      type: 'rss',
+      title: 'Cloudflare · Workers AI',
+      feedUrl: 'https://developers.cloudflare.com/changelog/rss/workers-ai.xml',
+      x: 6,
+      y: 8,
+      w: 6,
+    }), expect.objectContaining({
+      id: 'github-trending-repositories',
+      type: 'github-trending',
+      githubPeriod: 'daily',
+      githubLanguage: '',
+      x: 0,
+      y: 16,
+      w: 12,
+      h: 8,
+    }), expect.objectContaining({
+      id: 'github-trending-developers',
+      type: 'github-developers-trending',
+      githubPeriod: 'daily',
+      githubLanguage: '',
+      x: 0,
+      y: 24,
+      w: 12,
+      h: 8,
+    }), expect.objectContaining({
+      id: 'openrouter-models',
+      type: 'openrouter-models',
+      title: 'Modèles d’IA récents',
+      x: 0,
+      y: 32,
+      w: 12,
+      h: 8,
     })])
+    expect(parseBoard(tech)).not.toBeNull()
+  })
+
+  it('provides a Cinema dashboard with Versailles selected by default', () => {
+    expect(dashboardStorageKey('cinema')).toBe('encascade:board:v1:cinema')
+    expect(defaultDashboard('cinema').widgets).toEqual([expect.objectContaining({
+      id: 'cinema-programme',
+      type: 'cinema',
+      title: 'Séances de cinéma',
+      cinemaArea: 'versailles',
+      w: 12,
+    })])
+    expect(parseBoard(defaultDashboard('cinema'))).not.toBeNull()
+
+    const invalidArea = JSON.parse(JSON.stringify(defaultDashboard('cinema')))
+    invalidArea.widgets[0].cinemaArea = 'maurepas'
+    expect(parseBoard(invalidArea)).toBeNull()
+  })
+
+  it('upgrades only the untouched one-widget Tech seed', () => {
+    const oldSeed = {
+      version: 1 as const,
+      widgets: [{
+        id: 'google-developers',
+        type: 'youtube' as const,
+        title: 'Google Developers',
+        x: 0,
+        y: 0,
+        w: 12,
+        h: 8,
+        channelId: 'UC_x5XG1OV2P6uZZ5FSM9Ttw',
+        grayscale: false,
+      }],
+    }
+    expect(upgradeDashboardDefaults('tech', oldSeed)).toEqual(defaultDashboard('tech'))
+    expect(upgradeDashboardDefaults('tech', { version: 1, widgets: defaultDashboard('tech').widgets.slice(0, 3) })).toEqual(defaultDashboard('tech'))
+    expect(upgradeDashboardDefaults('tech', { ...oldSeed, widgets: [{ ...oldSeed.widgets[0]!, grayscale: true }] })).toEqual({ ...oldSeed, widgets: [{ ...oldSeed.widgets[0]!, grayscale: true }] })
+    expect(upgradeDashboardDefaults('daily', oldSeed)).toBe(oldSeed)
+  })
+
+  it('adds the model widget only when the saved Tech seed is still untouched', () => {
+    const defaults = defaultDashboard('tech')
+    const previousSeed = { version: 1 as const, widgets: defaults.widgets.filter(widget => widget.type !== 'openrouter-models') }
+    expect(upgradeDashboardDefaults('tech', previousSeed)).toEqual(defaults)
+
+    const customized = JSON.parse(JSON.stringify(previousSeed)) as typeof previousSeed
+    customized.widgets[0]!.title = 'Mes vidéos'
+    expect(upgradeDashboardDefaults('tech', customized)).toBe(customized)
   })
 
   it('restores geometry and widget preferences, including an empty board', () => {
@@ -48,6 +141,18 @@ describe('board configuration', () => {
     board.widgets.push({ ...widgetDefaults('rss', 'second-feed'), y: 10 })
     expect(parseBoard(board)?.widgets).toHaveLength(4)
   })
+  it('accepts an OpenRouter models widget without per-widget settings', () => {
+    const board = defaultBoard()
+    board.widgets.push({ ...widgetDefaults('openrouter-models', 'recent-models'), y: 10 })
+    expect(parseBoard(board)?.widgets.at(-1)).toMatchObject({ type: 'openrouter-models', title: 'Modèles d’IA récents' })
+  })
+
+  it('offers Hacker News as an optional widget without adding it to the Tech seed', () => {
+    expect(defaultDashboard('tech').widgets.some(widget => widget.type === 'hacker-news')).toBe(false)
+    const board = defaultBoard()
+    board.widgets.push({ ...widgetDefaults('hacker-news', 'hn'), y: 10 })
+    expect(parseBoard(board)?.widgets.at(-1)).toMatchObject({ type: 'hacker-news', title: 'Hacker News' })
+  })
   it('accepts a YouTube widget with a valid channel ID', () => {
     const board = defaultBoard()
     const widget = { ...widgetDefaults('youtube', 'videos'), channelId: 'UC_x5XG1OV2P6uZZ5FSM9Ttw', y: 9 }
@@ -56,6 +161,15 @@ describe('board configuration', () => {
     expect(parseBoard(board)?.widgets.at(-1)?.type).toBe('youtube')
     board.widgets.at(-1)!.channelId = 'UC_not-a-valid-channel'
     expect(parseBoard(board)).toBeNull()
+  })
+  it('keeps repository and developer trend filters independent', () => {
+    const board = defaultBoard()
+    board.widgets.push({ ...widgetDefaults('github-trending', 'repos'), githubPeriod: 'daily', githubLanguage: 'Rust', y: 10 })
+    board.widgets.push({ ...widgetDefaults('github-developers-trending', 'developers'), githubPeriod: 'monthly', githubLanguage: 'Python', y: 18 })
+    expect(parseBoard(board)?.widgets.slice(-2)).toEqual([
+      expect.objectContaining({ type: 'github-trending', githubPeriod: 'daily', githubLanguage: 'Rust' }),
+      expect.objectContaining({ type: 'github-developers-trending', githubPeriod: 'monthly', githubLanguage: 'Python' }),
+    ])
   })
   it('persists the YouTube thumbnail grayscale preference and rejects invalid values', () => {
     const defaults = widgetDefaults('youtube', 'videos')
@@ -72,6 +186,73 @@ describe('board configuration', () => {
     expect(parseBoard(board)?.widgets.at(-1)).toMatchObject({ type: 'youtube', grayscale: true })
     board.widgets.at(-1)!.grayscale = 'yes' as unknown as boolean
     expect(parseBoard(board)).toBeNull()
+  })
+})
+
+describe('GitHub Trending normalization', () => {
+  it('parses repository names, metadata and period star counts', () => {
+    const html = `<article class="Box-row">
+      <h2><a href="/owner/project"><span>owner /</span> project</a></h2>
+      <p class="col-9 color-fg-muted my-1">A useful &amp; fast project</p>
+      <span itemprop="programmingLanguage">TypeScript</span>
+      <a href="/owner/project/stargazers">12,345</a>
+      <a href="/owner/project/forks">678</a>
+      <span>987 stars today</span>
+    </article>`
+    expect(parseGitHubTrendingHtml(html, 'daily', 'TypeScript')).toMatchObject({
+      language: 'TypeScript',
+      repositories: [{
+        fullName: 'owner/project',
+        description: 'A useful & fast project',
+        language: 'TypeScript',
+        stars: 12345,
+        forks: 678,
+        starsPeriod: 987,
+        url: 'https://github.com/owner/project',
+      }],
+    })
+  })
+
+  it('parses developer profiles and their popular repositories', () => {
+    const html = `<article class="Box-row d-flex">
+      <a href="/octocat"><img src="https://avatars.githubusercontent.com/u/1?s=96&amp;v=4" alt="@octocat" /></a>
+      <h1 class="h3 lh-condensed"><a href="/octocat">The Octocat</a></h1>
+      <p class="f4"><a href="/octocat">octocat</a></p>
+      <h1 class="h4 lh-condensed"><a href="/octocat/Hello-World">Hello-World</a></h1>
+      <div class="f6 color-fg-muted mt-1">A sample repository</div>
+    </article>`
+    expect(parseGitHubTrendingDevelopersHtml(html, 'weekly', 'TypeScript')).toMatchObject({
+      period: 'weekly',
+      language: 'TypeScript',
+      developers: [{
+        username: 'octocat',
+        displayName: 'The Octocat',
+        avatarUrl: 'https://avatars.githubusercontent.com/u/1?s=96&v=4',
+        popularRepository: 'Hello-World',
+        popularRepositoryUrl: 'https://github.com/octocat/Hello-World',
+        popularRepositoryDescription: 'A sample repository',
+      }],
+    })
+  })
+
+  it('normalizes safe Hacker News stories and keeps discussion metadata', () => {
+    expect(normalizeHackerNewsStory({
+      id: 42,
+      title: 'A technical story',
+      url: 'https://example.org/story',
+      score: 123,
+      descendants: 45,
+      time: 1_600_000_000,
+    })).toMatchObject({
+      id: 42,
+      title: 'A technical story',
+      source: 'example.org',
+      points: 123,
+      comments: 45,
+      publishedAt: '2020-09-13T12:26:40.000Z',
+    })
+    expect(normalizeHackerNewsStory({ id: 43, title: 'Unsafe', url: 'javascript:alert(1)' })?.url).toBe('')
+    expect(normalizeHackerNewsStory({ id: '43', title: 'Malformed' })).toBeNull()
   })
 })
 
@@ -119,6 +300,17 @@ describe('feed normalization', () => {
     expect(data.articles[1]).toMatchObject({ link: 'https://example.org/relative', date: '' })
   })
 
+  it('allows markup-looking text inside CDATA while still rejecting a real DTD', () => {
+    const xml = `<rss version="2.0"><channel><title>GitHub Blog</title><item>
+      <title>Example entry</title><link>https://github.blog/example/</link>
+      <content:encoded><![CDATA[<!DOCTYPE html><html><body>Article body</body></html>]]></content:encoded>
+      <pubDate>Mon, 21 Sep 2026 12:00:00 GMT</pubDate>
+    </item></channel></rss>`
+
+    expect(parseFeedXml(xml, 'https://github.blog/feed/').articles[0]?.title).toBe('Example entry')
+    expect(() => parseFeedXml('<!DOCTYPE rss [<!ENTITY x "y">]><rss/>', 'https://example.org/feed.xml')).toThrow('Unsupported XML document')
+  })
+
   it('accepts only public HTTPS feed URLs', () => {
     expect(normalizeFeedUrl('https://theconversation.com/us/articles.atom')?.href).toBe('https://theconversation.com/us/articles.atom')
     for (const url of [
@@ -162,6 +354,16 @@ describe('YouTube channel and video links', () => {
     expect(youtubeVideoIdFromUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ')
     expect(youtubeVideoIdFromUrl('https://youtu.be/dQw4w9WgXcQ?t=10')).toBe('dQw4w9WgXcQ')
     expect(youtubeVideoIdFromUrl('https://videos.example/watch?v=dQw4w9WgXcQ')).toBeNull()
+  })
+
+  it('tries larger YouTube thumbnail variants before falling back to smaller ones', () => {
+    expect(youtubeThumbnailCandidates('dQw4w9WgXcQ')).toEqual([
+      'https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg',
+      'https://i.ytimg.com/vi/dQw4w9WgXcQ/sddefault.jpg',
+      'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+      'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg',
+      'https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg',
+    ])
   })
 
   it('shows recent publication dates relatively and older dates absolutely', () => {

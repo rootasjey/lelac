@@ -52,11 +52,26 @@ describe('board undo', () => {
     store.init('daily')
     store.saveWidget({ ...widgetDefaults('rss', 'daily-extra'), title: 'Lecture quotidienne', feedUrl: 'https://example.org/feed.xml', y: 10 })
     const dailySnapshot = localStorage.getItem(dashboardStorageKey('daily'))
+    localStorage.setItem(dashboardStorageKey('tech'), JSON.stringify({
+      version: 1,
+      widgets: [{
+        id: 'google-developers',
+        type: 'youtube',
+        title: 'Google Developers',
+        x: 0,
+        y: 0,
+        w: 12,
+        h: 8,
+        channelId: 'UC_x5XG1OV2P6uZZ5FSM9Ttw',
+        grayscale: false,
+      }],
+    }))
 
     store.init('tech')
     expect(store.activeDashboard).toBe('tech')
-    expect(store.widgets).toHaveLength(1)
+    expect(store.widgets).toHaveLength(6)
     expect(store.widgets[0]).toMatchObject({ id: 'google-developers', channelId: 'UC_x5XG1OV2P6uZZ5FSM9Ttw' })
+    expect(store.widgets.slice(1).map(widget => widget.id)).toEqual(['github-blog', 'cloudflare-workers-ai', 'github-trending-repositories', 'github-trending-developers', 'openrouter-models'])
     expect(localStorage.getItem(dashboardStorageKey('tech'))).not.toBeNull()
 
     store.init('daily')

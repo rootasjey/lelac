@@ -1,9 +1,11 @@
 import { normalizeFeedUrl } from '~~/shared/utils/feedUrl'
 import { normalizeYoutubeChannelId } from '~~/shared/utils/youtubeFeed'
+import { isCinemaAreaId, type CinemaAreaId } from '~~/shared/utils/cinema'
 
-export type WidgetKind = 'rss' | 'weather' | 'clock' | 'youtube'
+export type WidgetKind = 'rss' | 'weather' | 'clock' | 'youtube' | 'github-trending' | 'github-developers-trending' | 'hacker-news' | 'openrouter-models' | 'cinema'
+export type GitHubTrendingPeriod = 'daily' | 'weekly' | 'monthly'
 export interface City { name: string; timezone: string }
-export type DashboardId = 'daily' | 'tech'
+export type DashboardId = 'daily' | 'tech' | 'cinema'
 export interface BoardWidget {
   id: string
   type: WidgetKind
@@ -15,8 +17,11 @@ export interface BoardWidget {
   feedUrl?: string
   channelId?: string
   grayscale?: boolean
+  githubPeriod?: GitHubTrendingPeriod
+  githubLanguage?: string
   location?: { name: string; lat: number; lon: number }
   cities?: City[]
+  cinemaArea?: CinemaAreaId
 }
 export interface BoardConfig { version: 1; widgets: BoardWidget[] }
 export const boardStorageKey = 'encascade:board:v1'
@@ -28,6 +33,11 @@ export function widgetDefaults(type: WidgetKind, id: string): BoardWidget {
   if (type === 'rss') return { ...base, title: 'The Conversation · À la une', w: 8, h: 9, feedUrl: 'https://theconversation.com/us/articles.atom' }
   if (type === 'weather') return { ...base, title: 'Météo', location: { name: 'Paris, France', lat: 48.8566, lon: 2.3522 } }
   if (type === 'youtube') return { ...base, title: 'Vidéos YouTube', w: 8, h: 6, channelId: '', grayscale: false }
+  if (type === 'github-trending') return { ...base, title: 'Dépôts GitHub tendance', w: 8, h: 8, githubPeriod: 'daily', githubLanguage: '' }
+  if (type === 'github-developers-trending') return { ...base, title: 'Développeurs GitHub tendance', w: 8, h: 8, githubPeriod: 'daily', githubLanguage: '' }
+  if (type === 'hacker-news') return { ...base, title: 'Hacker News', w: 8, h: 8 }
+  if (type === 'openrouter-models') return { ...base, title: 'Modèles d’IA récents', w: 8, h: 8 }
+  if (type === 'cinema') return { ...base, title: 'Séances de cinéma', w: 12, h: 9, cinemaArea: 'versailles' }
   return { ...base, title: 'Heures du monde', cities: [{ name: 'Paris', timezone: 'Europe/Paris' }, { name: 'New York', timezone: 'America/New_York' }, { name: 'Tokyo', timezone: 'Asia/Tokyo' }] }
 }
 export function defaultBoard(): BoardConfig {
@@ -35,16 +45,91 @@ export function defaultBoard(): BoardConfig {
 }
 export function defaultDashboard(id: DashboardId): BoardConfig {
   if (id === 'daily') return defaultBoard()
+  if (id === 'cinema') return { version: 1, widgets: [widgetDefaults('cinema', 'cinema-programme')] }
   return {
     version: 1,
-    widgets: [{
-      ...widgetDefaults('youtube', 'google-developers'),
-      title: 'Google Developers',
-      channelId: 'UC_x5XG1OV2P6uZZ5FSM9Ttw',
-      w: 12,
-      h: 8,
-    }],
+    widgets: [
+      {
+        ...widgetDefaults('youtube', 'google-developers'),
+        title: 'Google Developers',
+        channelId: 'UC_x5XG1OV2P6uZZ5FSM9Ttw',
+        w: 12,
+        h: 8,
+      },
+      {
+        ...widgetDefaults('rss', 'github-blog'),
+        title: 'GitHub Blog',
+        feedUrl: 'https://github.blog/feed/',
+        x: 0,
+        y: 8,
+        w: 6,
+        h: 8,
+      },
+      {
+        ...widgetDefaults('rss', 'cloudflare-workers-ai'),
+        title: 'Cloudflare · Workers AI',
+        feedUrl: 'https://developers.cloudflare.com/changelog/rss/workers-ai.xml',
+        x: 6,
+        y: 8,
+        w: 6,
+        h: 8,
+      },
+      {
+        ...widgetDefaults('github-trending', 'github-trending-repositories'),
+        x: 0,
+        y: 16,
+        w: 12,
+        h: 8,
+      },
+      {
+        ...widgetDefaults('github-developers-trending', 'github-trending-developers'),
+        x: 0,
+        y: 24,
+        w: 12,
+        h: 8,
+      },
+      {
+        ...widgetDefaults('openrouter-models', 'openrouter-models'),
+        x: 0,
+        y: 32,
+        w: 12,
+        h: 8,
+      },
+    ],
   }
+}
+
+/** Upgrade only untouched Tech seeds from before the feed and trend defaults were added. */
+export function upgradeDashboardDefaults(id: DashboardId, board: BoardConfig): BoardConfig {
+  if (id !== 'tech') return board
+
+  const defaults = defaultDashboard('tech')
+  const currentSeed = defaults.widgets.slice(0, 4)
+  const previousSeed = currentSeed.slice(0, 3)
+  const previousFullSeed = defaults.widgets.filter(widget => widget.type !== 'openrouter-models')
+  if (board.widgets.length === previousFullSeed.length && JSON.stringify(board.widgets) === JSON.stringify(previousFullSeed)) return defaults
+  if (board.widgets.length === currentSeed.length && JSON.stringify(board.widgets) === JSON.stringify(currentSeed)) return defaultDashboard('tech')
+  if (board.widgets.length === previousSeed.length && JSON.stringify(board.widgets) === JSON.stringify(previousSeed)) return defaultDashboard('tech')
+  if (board.widgets.length !== 1) return board
+
+  const [widget] = board.widgets
+  if (!widget) return board
+  const expected = {
+    id: 'google-developers',
+    type: 'youtube',
+    title: 'Google Developers',
+    x: 0,
+    y: 0,
+    w: 12,
+    h: 8,
+    channelId: 'UC_x5XG1OV2P6uZZ5FSM9Ttw',
+  }
+  const allowedKeys = new Set([...Object.keys(expected), 'grayscale'])
+  if (Object.keys(widget).some(key => !allowedKeys.has(key))) return board
+  if (!Object.entries(expected).every(([key, value]) => widget[key as keyof BoardWidget] === value)) return board
+  if (widget.grayscale !== undefined && widget.grayscale !== false) return board
+
+  return defaultDashboard('tech')
 }
 export function validTimezone(value: string) {
   try { new Intl.DateTimeFormat('fr-FR', { timeZone: value }).format(); return !!value } catch { return false }
@@ -63,6 +148,16 @@ export function parseBoard(value: unknown): BoardConfig | null {
     if (![p.x, p.y, p.w, p.h].every(Number.isSafeInteger) || p.x < 0 || p.y < 0 || p.y > 1000 || p.w < 3 || p.x + p.w > 12 || p.h < 4 || p.h > 16) return null
     if (p.type === 'rss') { if (typeof p.feedUrl !== 'string' || !validFeedUrl(p.feedUrl)) return null }
     else if (p.type === 'youtube') { if (typeof p.channelId !== 'string' || normalizeYoutubeChannelId(p.channelId) !== p.channelId || (p.grayscale !== undefined && typeof p.grayscale !== 'boolean')) return null }
+    else if (p.type === 'github-trending' || p.type === 'github-developers-trending') {
+      if (p.githubPeriod !== 'daily' && p.githubPeriod !== 'weekly' && p.githubPeriod !== 'monthly') return null
+      if (typeof p.githubLanguage !== 'string' || p.githubLanguage.length > 50 || /[\u0000-\u001f]/.test(p.githubLanguage)) return null
+    }
+    else if (p.type === 'hacker-news' || p.type === 'openrouter-models') {
+      // These source widgets have no per-widget settings in the prototype.
+    }
+    else if (p.type === 'cinema') {
+      if (!isCinemaAreaId(p.cinemaArea)) return null
+    }
     else if (p.type === 'weather') {
       const l = p.location
       if (!l || typeof l.name !== 'string' || !l.name.trim() || !Number.isFinite(l.lat) || !Number.isFinite(l.lon) || Math.abs(l.lat) > 90 || Math.abs(l.lon) > 180) return null

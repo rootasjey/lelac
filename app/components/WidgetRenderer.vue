@@ -30,6 +30,10 @@ const componentMap: Record<string, Component> = {
   videos: defineAsyncComponent(() => import('~/components/widgets/WidgetVideos.vue')),
   markets: defineAsyncComponent(() => import('~/components/widgets/WidgetMarkets.vue')),
   releases: defineAsyncComponent(() => import('~/components/widgets/WidgetReleases.vue')),
+  'github-trending': defineAsyncComponent(() => import('~/components/board/BoardGithubTrending.vue')),
+  'github-developers-trending': defineAsyncComponent(() => import('~/components/board/BoardGithubDevelopersTrending.vue')),
+  'hacker-news': defineAsyncComponent(() => import('~/components/board/BoardHackerNews.vue')),
+  'openrouter-models': defineAsyncComponent(() => import('~/components/board/BoardOpenRouterModels.vue')),
 }
 
 const component = computed(() => componentMap[props.widget.type])
@@ -47,6 +51,10 @@ const fallbackTitle = computed(() => {
     videos: 'Videos',
     markets: 'Markets',
     releases: 'Releases',
+    'github-trending': 'Dépôts GitHub tendance',
+    'github-developers-trending': 'Développeurs GitHub tendance',
+    'hacker-news': 'Hacker News',
+    'openrouter-models': 'Modèles d’IA récents',
   }
   return labels[props.widget.type] ?? props.widget.type
 })

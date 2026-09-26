@@ -61,12 +61,16 @@ The first deployment is for personal use. Protect configuration writes before ex
 
 ## Current dashboard
 
-The `/` route opens Quotidien; the Tech tab opens a separate dashboard seeded with the Google Developers YouTube channel. Both boards support adding, configuring, moving, resizing and removing RSS, weather, world-clock and YouTube widgets. Undo covers layout, settings, additions and deletions within the current session. A cancelled addition leaves no provisional widget.
+The `/` route opens Quotidien; the Tech tab opens a separate dashboard seeded with the Google Developers YouTube channel, GitHub Blog and Cloudflare Workers AI changelog RSS feeds, plus separate GitHub Trending repository and developer widgets. Hacker News is available in the widget catalogue but is not forced into the default Tech layout. An untouched older Tech seed is upgraded with those widgets; customized Tech boards are preserved. Each GitHub trend widget has independent period and language settings. Both boards support adding, configuring, moving, resizing and removing RSS, weather, world-clock, YouTube, GitHub Trending and Hacker News widgets. Undo covers layout, settings, additions and deletions within the current session. A cancelled addition leaves no provisional widget.
 
 - Quotidien keeps its configuration under `encascade:board:v1`; Tech uses `encascade:board:v1:tech`. Legacy `distill-config` and earlier demonstration layouts are not migrated.
 - Desktop supports drag/resize and keyboard-accessible adjustment controls. Mobile stacks widgets in desktop reading order and supports adding, configuring and removing widgets. Geometry editing remains desktop-only.
 - RSS and Atom feeds are fetched and parsed directly by the server from public HTTPS URLs; redirects are checked, responses are limited to 2 MiB and 12 seconds, and results are cached for 5 minutes. No conversion service or API key is required. Articles link to their original sources.
 - YouTube channel feeds use the official YouTube Data API through a server endpoint. Set `NUXT_YOUTUBE_API_KEY` in a local `.env` file for `bun run dev`, or as a Cloudflare Worker secret for deployment. The key never reaches the browser; recent video metadata is cached for 15 minutes.
+- GitHub Trending repositories are read from GitHub's public Trending page through a server endpoint. Period and programming-language filters are passed independently for each widget instance; responses are cached for 15 minutes. This does not require an API key, but the HTML source is an external contract that should be monitored before a public deployment.
+- GitHub Trending developers use the corresponding public developers page through a separate server endpoint. The widget keeps its own period and programming-language settings and returns each profile's avatar, handle and popular repository. This also does not require an API key and relies on GitHub's public HTML contract.
+- Hacker News uses its public Firebase API through a cached server endpoint. It requires no API key and keeps the discussion score, comments, source domain and publication date for each story.
+- OpenRouter model metadata is public. To show the optional recent throughput comparison, set `NUXT_OPENROUTER_API_KEY` as a server-only secret; the app reads provider `p50` throughput over 30 minutes for up to the 12 newest models, and shows the column only in sufficiently wide tables. Without a key, the throughput column stays hidden; when the key is present but a model has no reported measurement, its cell shows a dash. The key is never sent to the browser.
 - Weather and city search use Open-Meteo. Search results must be explicitly selected. Clocks accept one to three named IANA timezones.
 - Nitro source endpoints have timeouts and caches (RSS: 5 minutes; weather: 10 minutes; city search: 1 hour). Visible widgets refresh every 10 minutes. Manual refresh reads the same server cache. Previously loaded data remains visible on refresh errors during the session; source changes clear the previous source.
 - Grid rendering starts after client mounting. Nitro and Wrangler are configured for Cloudflare Workers; production deployment, creating or renaming dashboards, YAML editing and D1 persistence remain unfinished. Legacy widgets are not offered in the new catalog.
@@ -76,7 +80,7 @@ The `/` route opens Quotidien; the Tech tab opens a separate dashboard seeded wi
 1. **Polished reference dashboard:** coherent Glance-inspired design, representative real content, readable mobile layout and reliable RSS/weather/clock widgets.
 2. **Complete visual workflow:** dashboard navigation, add/configure/move/remove widgets, undo, accessible move controls and reload persistence. Evaluate the layout package only against concrete needs.
 3. **Workers runtime and persistence:** verify the app in Wrangler locally and in production, add durable configuration storage, protect writes and review source caching and failure states.
-4. **Expand useful content:** explicitly defined GitHub trends and country-specific cinema releases.
+4. **Expand useful content:** country-specific cinema releases and additional daily sources. Tech now includes independent repository and developer trends.
 
 Each milestone should be usable before expanding the scope. Validate desktop and mobile rendering, the full edit/save/reload flow, and the actual Workers runtime before claiming those paths are complete.
 
@@ -98,6 +102,14 @@ NUXT_YOUTUBE_API_KEY=your-key
 ```
 
 For a deployed Worker, add the same secret with `bunx wrangler secret put NUXT_YOUTUBE_API_KEY`. Restrict the key to YouTube Data API v3 in Google Cloud. Review YouTube's [developer policies](https://developers.google.com/youtube/terms/developer-policies) before publishing the integration.
+
+OpenRouter throughput is optional. Add an API key to the ignored `.env` file to enable the 30-minute provider measurements:
+
+```sh
+NUXT_OPENROUTER_API_KEY=your-key
+```
+
+For a deployed Worker, add it with `bunx wrangler secret put NUXT_OPENROUTER_API_KEY`.
 
 `bun run dev` starts Nuxt locally. `bun run build` produces the Cloudflare Worker artifact; `bun run preview` builds it and starts Wrangler locally. `bun run deploy` builds and deploys to Cloudflare Workers. Check types with `bun run typecheck` and run tests once with `bun run test --run`.
 

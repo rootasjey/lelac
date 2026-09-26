@@ -178,6 +178,27 @@ a:hover {
   text-decoration: underline;
 }
 
+.board-link-underline {
+  color: inherit;
+  text-decoration-line: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+  transition: color 240ms ease, text-decoration-color 240ms ease;
+}
+
+.board-link-underline:hover,
+.board-link-underline:focus-visible {
+  color: inherit;
+  text-decoration-color: #d8c58f;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-link-underline {
+    transition: none;
+  }
+}
+
 /* Monospace data display */
 .mono {
   font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', 'Liberation Mono', 'Menlo', monospace;

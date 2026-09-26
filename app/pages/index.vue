@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const route = useRoute()
-const dashboardId = computed(() => route.query.board === 'tech' ? 'tech' : 'daily')
-const dashboardLabel = computed(() => dashboardId.value === 'tech' ? 'Tech' : 'Quotidien')
+const dashboardId = computed(() => route.query.board === 'tech' ? 'tech' : route.query.board === 'cinema' ? 'cinema' : 'daily')
+const dashboardLabel = computed(() => dashboardId.value === 'tech' ? 'Tech' : dashboardId.value === 'cinema' ? 'Cinéma' : 'Quotidien')
 useHead(() => ({ title: `Encascade — ${dashboardLabel.value}` }))
 </script>
 <template><ClientOnly><BoardDashboard :dashboard-id="dashboardId" /><template #fallback><p class="dashboard-loading">Chargement de votre tableau…</p></template></ClientOnly></template>

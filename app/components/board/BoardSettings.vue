@@ -52,6 +52,24 @@
         </section>
       </template>
 
+      <template v-if="draft.type === 'github-trending' || draft.type === 'github-developers-trending'">
+        <section class="widget-settings-section github-trending-settings">
+          <label>
+            Période
+            <select v-model="draft.githubPeriod">
+              <option value="daily">Aujourd’hui</option>
+              <option value="weekly">Cette semaine</option>
+              <option value="monthly">Ce mois-ci</option>
+            </select>
+          </label>
+          <label>
+            Langage
+            <input v-model="githubLanguageInput" placeholder="Tous les langages, Python, Rust…" autocomplete="off" />
+          </label>
+          <p class="field-hint">{{ draft.type === 'github-developers-trending' ? 'Le widget reprend le classement public des développeurs GitHub Trending.' : 'Le widget reprend le classement public GitHub Trending avec les étoiles gagnées sur la période.' }}</p>
+        </section>
+      </template>
+
       <template v-if="draft.type === 'weather'">
         <section class="widget-settings-section weather-settings">
           <label>
@@ -79,6 +97,15 @@
               </button>
             </li>
           </ul>
+        </section>
+      </template>
+      <template v-if="draft.type === 'cinema'">
+        <section class="widget-settings-section cinema-settings">
+          <label for="cinema-area">Zone de programmation</label>
+          <select id="cinema-area" v-model="draft.cinemaArea">
+            <option v-for="area in cinemaAreaOptions" :key="area.id" :value="area.id">{{ area.name }}</option>
+          </select>
+          <p class="field-hint">Séances des cinémas indépendants référencés par le SCARE, autour de la zone choisie.</p>
         </section>
       </template>
       <template v-if="draft.type === 'clock'">
@@ -146,12 +173,14 @@ import type { City } from '~/utils/boardConfig'
 import { worldClockOptions, type WorldClockOption } from '~/utils/worldClockCities'
 import { VueDraggable } from 'vue-draggable-plus'
 import { normalizeYoutubeChannelId, youtubeChannelHandleFromInput } from '~~/shared/utils/youtubeFeed'
+import { cinemaAreaOptions } from '~~/shared/utils/cinema'
 const props = defineProps<{ widget: BoardWidget; isNew?: boolean }>()
 const emit = defineEmits<{ save: [widget: BoardWidget]; close: []; remove: [] }>()
 const open = ref(true)
 const titleInput = ref<HTMLInputElement | null>(null)
 const draft = ref<BoardWidget>(JSON.parse(JSON.stringify(props.widget)))
 const youtubeChannelInput = ref(props.widget.channelId ?? '')
+const githubLanguageInput = ref(props.widget.githubLanguage ?? '')
 const clockCities = ref<City[]>(JSON.parse(JSON.stringify(props.widget.cities ?? [])))
 const query = ref('')
 const searching = ref(false)
@@ -260,6 +289,13 @@ async function save() {
     if (!channelId) { error.value = 'YouTube a renvoyé un identifiant de chaîne invalide.'; return }
     draft.value.channelId = channelId
   }
+  if (draft.value.type === 'github-trending' || draft.value.type === 'github-developers-trending') {
+    if (!['daily', 'weekly', 'monthly'].includes(String(draft.value.githubPeriod))) {
+      error.value = 'Choisissez une période GitHub valide.'
+      return
+    }
+    draft.value.githubLanguage = githubLanguageInput.value.trim()
+  }
   if (draft.value.type === 'clock') {
     const cities = clockCities.value.map(city => ({ name: city.name.trim(), timezone: city.timezone.trim() }))
     if (!cities.length || cities.length > 3 || cities.some(city => !city.name || !validTimezone(city.timezone))) { error.value = 'Choisissez une à trois villes dans la liste.'; return }
@@ -289,6 +325,9 @@ async function save() {
 .settings-dialog-content .youtube-grayscale-setting { display: flex; min-height: 40px; align-items: center; justify-content: space-between; gap: 16px; margin-top: 24px; }
 .settings-dialog-content .youtube-grayscale-setting label { margin: 0; color: #bdb8c5; cursor: pointer; }
 .settings-dialog-content .youtube-grayscale-hint { margin-top: 4px; }
+.settings-dialog-content .github-trending-settings select { display: block; width: 100%; margin-top: 6px; padding: 10px; background: #242329; border: 1px solid #55515d; border-radius: 4px; color: #ece9ee; font: inherit; }
+.settings-dialog-content .cinema-settings select { display: block; width: 100%; min-height: 40px; margin-top: 6px; padding: 0 10px; background: #242329; border: 1px solid #55515d; border-radius: 4px; color: #ece9ee; font: inherit; }
+.settings-dialog-content .cinema-settings select:focus-visible { outline: 2px solid #d8c58f; outline-offset: 2px; }
 .settings-dialog-content .weather-settings .selected-location { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 12px 0 0; }
 .settings-dialog-content .weather-settings .selected-location span { color: #85838d; font-size: 10px; letter-spacing: .4px; text-transform: uppercase; }
 .settings-dialog-content .weather-settings .selected-location strong { color: #bdb8c5; font-weight: 500; }
@@ -308,9 +347,9 @@ async function save() {
 .settings-dialog-content .section-label { display: block; margin: 0; color: #bdb8c5; }
 .settings-dialog-content .count-label { color: #85838d; font-size: 11px; padding-top: 3px; }
 .settings-dialog-content .clock-settings-heading p { margin: 4px 0 16px; }
-.settings-dialog-content .clock-city-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 12px; margin: 16px 0; }
+.settings-dialog-content .clock-city-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 12px; margin: 16px 0; }
 .settings-dialog-content .clock-city-row > label { display: block; min-width: 0; margin: 0; }
-.settings-dialog-content .clock-city-index { align-self: center; color: #85838d; font-size: 11px; letter-spacing: 1px; }
+.settings-dialog-content .clock-city-index { display: flex; align-self: stretch; align-items: center; justify-content: flex-start; color: #aaa7b2; font-size: 18px; font-weight: 500; letter-spacing: .04em; line-height: 1; }
 .settings-dialog-content .clock-city-handle { cursor: grab; touch-action: none; user-select: none; }
 .settings-dialog-content .clock-city-handle:active { cursor: grabbing; }
 .settings-dialog-content .clock-city-row.sortable-ghost { opacity: .35; }

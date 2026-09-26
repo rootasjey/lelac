@@ -2,12 +2,17 @@
 // so a reactive source change cannot display the old city's/feed's data.
 import { resolveBoardSourceValue, type BoardSourceResponse } from '~~/shared/utils/sourceState'
 
-export function useBoardSource<T>(key: MaybeRefOrGetter<string>, fetcher: () => Promise<T>) {
+export function useBoardSource<T>(key: MaybeRefOrGetter<string>, fetcher: () => Promise<T>, options: { skipNuxtCache?: boolean } = {}) {
   const sourceKey = computed(() => toValue(key))
   const { data, status, error, refresh } = useAsyncData<BoardSourceResponse<T>>(sourceKey, async () => {
     const requestedKey = sourceKey.value
     return { key: requestedKey, payload: await fetcher() }
-  }, { server: false, deep: false, dedupe: 'defer' })
+  }, {
+    server: false,
+    deep: false,
+    dedupe: 'defer',
+    ...(options.skipNuxtCache ? { getCachedData: () => undefined } : {}),
+  })
   const previous = shallowRef<BoardSourceResponse<T>>()
   watch(sourceKey, () => { previous.value = undefined }, { flush: 'sync' })
   watch(data, response => { if (response?.key === sourceKey.value) previous.value = response as BoardSourceResponse<T> }, { immediate: true })

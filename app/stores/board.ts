@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import type { ReadonlyLayout } from 'grid-layout-plus'
-import { dashboardStorageKey, defaultDashboard, parseBoard } from '~/utils/boardConfig'
+import { dashboardStorageKey, defaultDashboard, parseBoard, upgradeDashboardDefaults } from '~/utils/boardConfig'
 import type { BoardConfig, BoardWidget, DashboardId } from '~/utils/boardConfig'
 
 export const useBoardStore = defineStore('board', () => {
@@ -25,7 +25,8 @@ export const useBoardStore = defineStore('board', () => {
       if (raw) {
         const parsed = parseBoard(JSON.parse(raw))
         if (!parsed) throw new Error('Invalid configuration')
-        config.value = parsed
+        config.value = upgradeDashboardDefaults(dashboard, parsed)
+        if (config.value !== parsed) persist()
         message.value = ''
       } else persist()
     } catch { message.value = 'Configuration illisible : un tableau initial a été chargé' }

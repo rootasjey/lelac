@@ -6,6 +6,7 @@ export default defineNuxtConfig({
   nitro: { preset: 'cloudflare-module' },
   runtimeConfig: {
     youtubeApiKey: '',
+    openrouterApiKey: '',
   },
   colorMode: {
     preference: 'dark',
