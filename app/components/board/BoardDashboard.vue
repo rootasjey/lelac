@@ -100,7 +100,7 @@
             <NButton type="button" btn="ghost" square="10" icon label="i-ph-x-bold" aria-label="Fermer la programmation" @click="detailOpen = false" />
           </header>
           <div class="cinema-dialog-scroll">
-            <BoardCinema :area="detailWidget.cinemaArea ?? 'versailles'" expanded />
+            <BoardCinema v-if="detailWidget.cinemaLocation" :location="detailWidget.cinemaLocation" expanded />
           </div>
         </div>
       </NDialogContent>
@@ -135,7 +135,7 @@
             <BoardGithubDevelopersTrending v-else-if="detailWidget?.type === 'github-developers-trending'" :period="detailWidget.githubPeriod" :language="detailWidget.githubLanguage" expanded />
             <BoardHackerNews v-else-if="detailWidget?.type === 'hacker-news'" expanded />
             <BoardOpenRouterModels v-else-if="detailWidget?.type === 'openrouter-models'" :key="`${dashboardId}:${detailWidget.id}:drawer`" :dashboard-id="dashboardId" :widget-id="detailWidget.id" sort-scope="drawer" expanded />
-            <BoardCinema v-else-if="detailWidget?.type === 'cinema'" :area="detailWidget.cinemaArea ?? 'versailles'" expanded />
+            <BoardCinema v-else-if="detailWidget?.type === 'cinema' && detailWidget.cinemaLocation" :location="detailWidget.cinemaLocation" expanded />
           </div>
         </div>
       </template>

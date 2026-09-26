@@ -1,21 +1,44 @@
-export type CinemaAreaId = 'versailles' | 'saint-quentin-en-yvelines' | 'trappes' | 'paris'
-
-export interface CinemaArea {
-  id: CinemaAreaId
+export interface CinemaLocation {
+  inseeCode: string
   name: string
-  postalPrefix: string
-  center?: { lat: number; lon: number }
-  radiusKm?: number
+  department: string
+  lat: number
+  lon: number
 }
 
-export const cinemaAreas: Record<CinemaAreaId, CinemaArea> = {
-  versailles: { id: 'versailles', name: 'Versailles', postalPrefix: '78', center: { lat: 48.8014, lon: 2.1301 }, radiusKm: 22 },
-  'saint-quentin-en-yvelines': { id: 'saint-quentin-en-yvelines', name: 'Saint-Quentin-en-Yvelines', postalPrefix: '78', center: { lat: 48.785, lon: 2.044 }, radiusKm: 16 },
-  trappes: { id: 'trappes', name: 'Trappes', postalPrefix: '78', center: { lat: 48.7771, lon: 2.0028 }, radiusKm: 14 },
-  paris: { id: 'paris', name: 'Paris', postalPrefix: '75' },
+// Kept only to migrate boards saved before cinema locations became searchable.
+export type LegacyCinemaAreaId = 'versailles' | 'saint-quentin-en-yvelines' | 'trappes' | 'paris'
+const legacyCinemaLocations: Record<LegacyCinemaAreaId, CinemaLocation> = {
+  versailles: { inseeCode: '78646', name: 'Versailles', department: '78', lat: 48.8014, lon: 2.1301 },
+  'saint-quentin-en-yvelines': { inseeCode: '78423', name: 'Saint-Quentin-en-Yvelines', department: '78', lat: 48.785, lon: 2.044 },
+  trappes: { inseeCode: '78621', name: 'Trappes', department: '78', lat: 48.7771, lon: 2.0028 },
+  paris: { inseeCode: '75056', name: 'Paris', department: '75', lat: 48.8566, lon: 2.3522 },
 }
 
-export const cinemaAreaOptions = Object.values(cinemaAreas)
+export function isLegacyCinemaAreaId(value: unknown): value is LegacyCinemaAreaId {
+  return typeof value === 'string' && Object.hasOwn(legacyCinemaLocations, value)
+}
+
+export function cinemaLocationFromLegacyArea(value: unknown): CinemaLocation | null {
+  return isLegacyCinemaAreaId(value) ? { ...legacyCinemaLocations[value] } : null
+}
+
+export function isCinemaLocation(value: unknown): value is CinemaLocation {
+  if (!value || typeof value !== 'object') return false
+  const location = value as Partial<CinemaLocation>
+  return typeof location.inseeCode === 'string'
+    && /^(?:\d{5}|2[AB]\d{3})$/.test(location.inseeCode)
+    && typeof location.name === 'string'
+    && !!location.name.trim()
+    && typeof location.department === 'string'
+    && /^(?:\d{2}|2[AB]|97\d|98\d)$/.test(location.department)
+    && Number.isFinite(location.lat)
+    && Number(location.lat) >= -90 && Number(location.lat) <= 90
+    && Number.isFinite(location.lon)
+    && Number(location.lon) >= -180 && Number(location.lon) <= 180
+}
+
+export const CINEMA_SEARCH_RADIUS_KM = 30
 
 export interface CinemaShowing {
   id: string
@@ -50,10 +73,14 @@ export interface CinemaFilmSchedule {
 }
 
 export interface CinemaScheduleResult {
-  area: CinemaAreaId
+  location: CinemaLocation
   showings: CinemaShowing[]
   total: number
   fetchedAt: string
+}
+
+export interface CinemaLocationOption extends CinemaLocation {
+  population: number
 }
 
 export interface RawCinemaShowing {
@@ -72,10 +99,6 @@ export interface RawCinemaShowing {
   cinecp?: unknown
   '_coords.lat'?: unknown
   '_coords.lon'?: unknown
-}
-
-export function isCinemaAreaId(value: unknown): value is CinemaAreaId {
-  return typeof value === 'string' && Object.hasOwn(cinemaAreas, value)
 }
 
 function text(value: unknown) {
@@ -103,19 +126,16 @@ function distanceKm(latA: number, lonA: number, latB: number, lonB: number) {
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-export function normalizeCinemaShowings(rows: RawCinemaShowing[], areaId: CinemaAreaId, now = Date.now()): CinemaShowing[] {
-  const area = cinemaAreas[areaId]
+export function normalizeCinemaShowings(rows: RawCinemaShowing[], location: CinemaLocation, now = Date.now()): CinemaShowing[] {
   return rows.flatMap((row) => {
     const startsAt = text(row.showstart)
     const timestamp = parseDate(startsAt)
-    const postalCode = text(row.cinecp)
-    if (!timestamp || timestamp < now || !postalCode.startsWith(area.postalPrefix)) return []
+    if (!timestamp || timestamp < now) return []
+    const lat = number(row['_coords.lat'])
+    const lon = number(row['_coords.lon'])
+    if (lat === null || lon === null || distanceKm(location.lat, location.lon, lat, lon) > CINEMA_SEARCH_RADIUS_KM) return []
 
-    if (area.center && area.radiusKm) {
-      const lat = number(row['_coords.lat'])
-      const lon = number(row['_coords.lon'])
-      if (lat === null || lon === null || distanceKm(area.center.lat, area.center.lon, lat, lon) > area.radiusKm) return []
-    }
+    const postalCode = text(row.cinecp)
 
     const filmTitle = text(row.filmtitle)
     const cinema = text(row.cinenom)

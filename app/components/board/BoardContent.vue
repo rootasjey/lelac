@@ -6,7 +6,7 @@
   <BoardGithubDevelopersTrending v-else-if="widget.type === 'github-developers-trending'" :period="widget.githubPeriod" :language="widget.githubLanguage" @more="$emit('more')" />
   <BoardHackerNews v-else-if="widget.type === 'hacker-news'" @more="$emit('more')" />
   <BoardOpenRouterModels v-else-if="widget.type === 'openrouter-models'" :dashboard-id="dashboardId" :widget-id="widget.id" />
-  <BoardCinema v-else-if="widget.type === 'cinema'" :area="widget.cinemaArea ?? 'versailles'" />
+  <BoardCinema v-else-if="widget.type === 'cinema' && widget.cinemaLocation" :location="widget.cinemaLocation" />
   <BoardClock v-else :cities="widget.cities!" />
 </template>
 <script setup lang="ts">

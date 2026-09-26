@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { useBoardVisibleItemCount } from '~/composables/useBoardVisibleItemCount'
 import { useBoardSource } from '~/composables/useBoardSource'
-import { cinemaAreas, groupCinemaShowings, type CinemaAreaId, type CinemaFilmSchedule, type CinemaScheduleResult } from '~~/shared/utils/cinema'
+import { CINEMA_SEARCH_RADIUS_KM, groupCinemaShowings, type CinemaFilmSchedule, type CinemaLocation, type CinemaScheduleResult } from '~~/shared/utils/cinema'
 
-const props = withDefaults(defineProps<{ area: CinemaAreaId; expanded?: boolean }>(), { expanded: false })
+const props = withDefaults(defineProps<{ location: CinemaLocation; expanded?: boolean }>(), { expanded: false })
 const body = ref<HTMLElement>()
 const measurement = ref<HTMLOListElement>()
 const bodyWidth = ref(0)
@@ -12,8 +12,8 @@ const activeSlide = ref(0)
 const expanded = computed(() => props.expanded)
 const { capacity, measure } = useBoardVisibleItemCount(body, measurement, expanded)
 const { value, loading, error, refresh } = useBoardSource<CinemaScheduleResult>(
-  () => `cinema:v3:${props.area}`,
-  () => $fetch('/api/sources/cinema', { query: { area: props.area } }),
+  () => `cinema:v4:${props.location.inseeCode}:${props.location.lat.toFixed(4)}:${props.location.lon.toFixed(4)}`,
+  () => $fetch('/api/sources/cinema', { query: props.location }),
   { skipNuxtCache: true },
 )
 
@@ -24,7 +24,7 @@ const posterGrid = computed(() => !expanded.value && bodyWidth.value >= 900)
 const visible = computed(() => expanded.value || carousel.value
   ? films.value
   : films.value.slice(0, Math.max(1, capacity.value, firstRowCapacity.value)))
-const areaName = computed(() => cinemaAreas[props.area].name)
+const locationName = computed(() => props.location.name)
 
 let bodyResizeObserver: ResizeObserver | undefined
 let scrollFrame = 0
@@ -122,7 +122,7 @@ function syncActiveSlide() {
       <p v-else-if="error && !films.length" class="cinema-state" role="alert">
         Programmation indisponible. <button type="button" @click="refresh()">Réessayer</button>
       </p>
-      <p v-else-if="!loading && !films.length" class="cinema-state">Aucune séance à venir trouvée autour de {{ areaName }}.</p>
+      <p v-else-if="!loading && !films.length" class="cinema-state">Aucune séance à venir trouvée dans un rayon de {{ CINEMA_SEARCH_RADIUS_KM }} km autour de {{ locationName }}.</p>
       <ol v-else class="cinema-list">
         <li v-for="(film, filmIndex) in visible" :key="film.key" class="film-card" :class="{ 'film-card-expanded': expanded }" :style="{ '--reveal-index': Math.min(filmIndex, 12) }">
           <a v-if="film.poster && bookingUrl(film)" class="poster-link" :href="bookingUrl(film)" target="_blank" rel="noopener noreferrer" :aria-label="`Réserver ${film.filmTitle}`">
@@ -203,7 +203,7 @@ function syncActiveSlide() {
 
     <p v-if="error && films.length" class="cinema-stale" role="status">Actualisation impossible · programmation précédente conservée.</p>
     <footer v-if="!expanded">
-      <span class="source-label">Programmation SCARE · {{ areaName }}</span>
+      <span class="source-label">Programmation SCARE · {{ locationName }}</span>
     </footer>
   </div>
 </template>

@@ -101,11 +101,41 @@
       </template>
       <template v-if="draft.type === 'cinema'">
         <section class="widget-settings-section cinema-settings">
-          <label for="cinema-area">Zone de programmation</label>
-          <select id="cinema-area" v-model="draft.cinemaArea">
-            <option v-for="area in cinemaAreaOptions" :key="area.id" :value="area.id">{{ area.name }}</option>
-          </select>
-          <p class="field-hint">Séances des cinémas indépendants référencés par le SCARE, autour de la zone choisie.</p>
+          <label for="cinema-location">Commune</label>
+          <NCombobox
+            id="cinema-location"
+            :model-value="selectedCinemaOption"
+            :items="cinemaOptions"
+            by="inseeCode"
+            label-key="name"
+            value-key="inseeCode"
+            :ignore-filter="true"
+            :_combobox-list="{ class: 'cinema-combobox-list', align: 'start', position: 'popper' }"
+            :_combobox-viewport="{ class: 'max-h-60 overflow-y-auto' }"
+            text-empty="Aucune commune trouvée."
+            @update:model-value="selectCinemaLocation"
+          >
+            <template #input-wrapper>
+              <NComboboxInput
+                v-model="cinemaQuery"
+                :display-value="cinemaInputDisplayValue"
+                class="cinema-location-input"
+                placeholder="Rechercher une commune…"
+                autocomplete="off"
+                autofocus
+              />
+            </template>
+            <template #item="{ item }">
+              <span class="cinema-location-option"><span>{{ item.name }}</span><small>{{ item.department }}</small></span>
+            </template>
+            <template #empty>
+              <span v-if="cinemaSearchPending">Recherche des communes…</span>
+              <span v-else-if="cinemaSearchError">{{ cinemaSearchError }}</span>
+              <span v-else-if="cinemaQuery.trim().length < 2">Saisissez au moins deux caractères.</span>
+              <span v-else>Aucune commune trouvée.</span>
+            </template>
+          </NCombobox>
+          <p class="field-hint">Séances des cinémas indépendants référencés par le SCARE dans un rayon de 30 km. La couverture varie selon les villes.</p>
         </section>
       </template>
       <template v-if="draft.type === 'clock'">
@@ -173,7 +203,7 @@ import type { City } from '~/utils/boardConfig'
 import { worldClockOptions, type WorldClockOption } from '~/utils/worldClockCities'
 import { VueDraggable } from 'vue-draggable-plus'
 import { normalizeYoutubeChannelId, youtubeChannelHandleFromInput } from '~~/shared/utils/youtubeFeed'
-import { cinemaAreaOptions } from '~~/shared/utils/cinema'
+import { isCinemaLocation, type CinemaLocation, type CinemaLocationOption } from '~~/shared/utils/cinema'
 const props = defineProps<{ widget: BoardWidget; isNew?: boolean }>()
 const emit = defineEmits<{ save: [widget: BoardWidget]; close: []; remove: [] }>()
 const open = ref(true)
@@ -182,6 +212,11 @@ const draft = ref<BoardWidget>(JSON.parse(JSON.stringify(props.widget)))
 const youtubeChannelInput = ref(props.widget.channelId ?? '')
 const githubLanguageInput = ref(props.widget.githubLanguage ?? '')
 const clockCities = ref<City[]>(JSON.parse(JSON.stringify(props.widget.cities ?? [])))
+const cinemaQuery = ref(props.widget.cinemaLocation?.name ?? '')
+const cinemaSearchResults = ref<CinemaLocationOption[]>([])
+const cinemaSearchPending = ref(false)
+const cinemaSearchError = ref('')
+const cinemaLocationNeedsConfirmation = ref(false)
 const query = ref('')
 const searching = ref(false)
 const saving = ref(false)
@@ -190,12 +225,73 @@ const cityError = ref('')
 const results = ref<Array<{ id: number; name: string; lat: number; lon: number }>>([])
 let controller: AbortController | undefined
 let youtubeResolveController: AbortController | undefined
+let cinemaController: AbortController | undefined
+let cinemaSearchTimer: ReturnType<typeof setTimeout> | undefined
 let request = 0
 let closeRequested = false
 onBeforeUnmount(() => {
   controller?.abort()
   youtubeResolveController?.abort()
+  cinemaController?.abort()
+  if (cinemaSearchTimer) clearTimeout(cinemaSearchTimer)
 })
+const selectedCinemaOption = computed<CinemaLocationOption | undefined>(() => {
+  const location = draft.value.cinemaLocation
+  return location ? { ...location, population: 0 } : undefined
+})
+const cinemaInputDisplayValue = (value: CinemaLocationOption | undefined) => value?.name ?? ''
+const cinemaOptions = computed(() => {
+  const search = cinemaQuery.value.trim().toLocaleLowerCase('fr-FR')
+  const selected = selectedCinemaOption.value
+  const keepSelected = selected && (!search || selected.name.toLocaleLowerCase('fr-FR').includes(search)) ? [selected] : []
+  const known = new Set(keepSelected.map(option => option.inseeCode))
+  return [...keepSelected, ...cinemaSearchResults.value.filter(option => !known.has(option.inseeCode))]
+})
+watch(cinemaQuery, (query) => {
+  const normalized = query.trim()
+  const matchesSelectedLocation = normalized.toLocaleLowerCase('fr-FR') === draft.value.cinemaLocation?.name.toLocaleLowerCase('fr-FR')
+  cinemaLocationNeedsConfirmation.value = normalized.length > 0 && !matchesSelectedLocation
+  if (cinemaSearchTimer) clearTimeout(cinemaSearchTimer)
+  cinemaController?.abort()
+  cinemaSearchError.value = ''
+  cinemaSearchResults.value = []
+  if (normalized.length < 2 || matchesSelectedLocation) {
+    cinemaSearchPending.value = false
+    return
+  }
+
+  cinemaSearchTimer = setTimeout(async () => {
+    const activeController = new AbortController()
+    cinemaController = activeController
+    cinemaSearchPending.value = true
+    try {
+      cinemaSearchResults.value = await $fetch<CinemaLocationOption[]>('/api/sources/cinema-cities', {
+        query: { q: normalized },
+        signal: activeController.signal,
+      })
+    } catch (error) {
+      if (!activeController.signal.aborted) cinemaSearchError.value = 'Recherche indisponible. Réessayez.'
+    } finally {
+      if (cinemaController === activeController) cinemaSearchPending.value = false
+    }
+  }, 250)
+})
+function selectCinemaLocation(value: CinemaLocationOption | null | undefined) {
+  if (!value) return
+  const location: CinemaLocation = {
+    inseeCode: value.inseeCode,
+    name: value.name,
+    department: value.department,
+    lat: value.lat,
+    lon: value.lon,
+  }
+  draft.value.cinemaLocation = location
+  delete draft.value.cinemaArea
+  cinemaLocationNeedsConfirmation.value = false
+  cinemaQuery.value = location.name
+  cinemaSearchResults.value = []
+  cinemaSearchError.value = ''
+}
 function requestClose() {
   if (closeRequested) return
   closeRequested = true
@@ -264,6 +360,12 @@ async function save() {
     draft.value.feedUrl = draft.value.feedUrl?.trim()
     if (!validFeedUrl(draft.value.feedUrl ?? '')) { error.value = 'Saisissez une adresse de flux HTTPS valide.'; return }
   }
+  if (draft.value.type === 'cinema') {
+    if (!isCinemaLocation(draft.value.cinemaLocation) || cinemaLocationNeedsConfirmation.value) {
+      error.value = 'Choisissez une commune dans la liste de suggestions.'
+      return
+    }
+  }
   if (draft.value.type === 'youtube') {
     let channelId = normalizeYoutubeChannelId(youtubeChannelInput.value)
     if (!channelId && !youtubeChannelHandleFromInput(youtubeChannelInput.value)) {
@@ -326,8 +428,9 @@ async function save() {
 .settings-dialog-content .youtube-grayscale-setting label { margin: 0; color: #bdb8c5; cursor: pointer; }
 .settings-dialog-content .youtube-grayscale-hint { margin-top: 4px; }
 .settings-dialog-content .github-trending-settings select { display: block; width: 100%; margin-top: 6px; padding: 10px; background: #242329; border: 1px solid #55515d; border-radius: 4px; color: #ece9ee; font: inherit; }
-.settings-dialog-content .cinema-settings select { display: block; width: 100%; min-height: 40px; margin-top: 6px; padding: 0 10px; background: #242329; border: 1px solid #55515d; border-radius: 4px; color: #ece9ee; font: inherit; }
-.settings-dialog-content .cinema-settings select:focus-visible { outline: 2px solid #d8c58f; outline-offset: 2px; }
+.settings-dialog-content .cinema-settings .combobox { display: block; width: 100%; margin-top: 6px; }
+.settings-dialog-content .cinema-settings .cinema-location-input { width: 100%; min-height: 40px; border-color: #55515d; background: #242329; color: #ece9ee; font: inherit; }
+.settings-dialog-content .cinema-settings .cinema-location-input::placeholder { color: #85838d; opacity: 1; }
 .settings-dialog-content .weather-settings .selected-location { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 12px 0 0; }
 .settings-dialog-content .weather-settings .selected-location span { color: #85838d; font-size: 10px; letter-spacing: .4px; text-transform: uppercase; }
 .settings-dialog-content .weather-settings .selected-location strong { color: #bdb8c5; font-weight: 500; }
@@ -365,6 +468,12 @@ async function save() {
 .clock-combobox-list > .input-wrapper .input:focus-visible { outline: 2px solid #d8c58f; outline-offset: -2px; }
 .clock-combobox-list [role='option'] { display: flex; align-items: center; min-height: 38px; padding: 7px 9px; border-radius: 3px; color: #d9d5df; cursor: pointer; }
 .clock-combobox-list [role='option'][data-highlighted] { background: #35333c; color: #ece9ee; }
+.cinema-combobox-list { z-index: 60; max-height: 280px; overflow-y: auto; padding: 4px; border: 1px solid #55515d; border-radius: 4px; background: #242329; box-shadow: 0 12px 30px #08080c88; }
+.cinema-combobox-list[data-state='open'] { animation: clock-combobox-in 140ms ease-out; }
+.cinema-combobox-list [role='option'] { display: flex; align-items: center; min-height: 40px; padding: 8px 10px; border-radius: 3px; color: #d9d5df; cursor: pointer; }
+.cinema-combobox-list [role='option'][data-highlighted] { background: #35333c; color: #ece9ee; }
+.cinema-location-option { display: flex; flex: 1; align-items: baseline; justify-content: space-between; gap: 12px; }
+.cinema-location-option small { color: #aaa7b2; font-size: 11px; }
 .settings-dialog-content .clock-selected-value { display: flex; flex: 1 1 0%; align-items: baseline; gap: 3px; min-width: 0; overflow: hidden; white-space: nowrap; line-height: 1.2; }
 .settings-dialog-content .clock-selected-value > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; line-height: 1.2; }
 .settings-dialog-content .clock-selected-value small { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #aaa7b2; font-size: 11px; font-weight: 400; line-height: 1.2; }

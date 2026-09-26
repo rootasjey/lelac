@@ -1,6 +1,6 @@
 import { normalizeFeedUrl } from '~~/shared/utils/feedUrl'
 import { normalizeYoutubeChannelId } from '~~/shared/utils/youtubeFeed'
-import { isCinemaAreaId, type CinemaAreaId } from '~~/shared/utils/cinema'
+import { cinemaLocationFromLegacyArea, isCinemaLocation, type CinemaLocation, type LegacyCinemaAreaId } from '~~/shared/utils/cinema'
 
 export type WidgetKind = 'rss' | 'weather' | 'clock' | 'youtube' | 'github-trending' | 'github-developers-trending' | 'hacker-news' | 'openrouter-models' | 'cinema'
 export type GitHubTrendingPeriod = 'daily' | 'weekly' | 'monthly'
@@ -21,7 +21,9 @@ export interface BoardWidget {
   githubLanguage?: string
   location?: { name: string; lat: number; lon: number }
   cities?: City[]
-  cinemaArea?: CinemaAreaId
+  cinemaLocation?: CinemaLocation
+  /** @deprecated Read only: migrated to cinemaLocation by parseBoard. */
+  cinemaArea?: LegacyCinemaAreaId
 }
 export interface BoardConfig { version: 1; widgets: BoardWidget[] }
 export const boardStorageKey = 'encascade:board:v1'
@@ -37,7 +39,7 @@ export function widgetDefaults(type: WidgetKind, id: string): BoardWidget {
   if (type === 'github-developers-trending') return { ...base, title: 'Développeurs GitHub tendance', w: 8, h: 8, githubPeriod: 'daily', githubLanguage: '' }
   if (type === 'hacker-news') return { ...base, title: 'Hacker News', w: 8, h: 8 }
   if (type === 'openrouter-models') return { ...base, title: 'Modèles d’IA récents', w: 8, h: 8 }
-  if (type === 'cinema') return { ...base, title: 'Séances de cinéma', w: 12, h: 9, cinemaArea: 'versailles' }
+  if (type === 'cinema') return { ...base, title: 'Séances de cinéma', w: 12, h: 9, cinemaLocation: cinemaLocationFromLegacyArea('versailles')! }
   return { ...base, title: 'Heures du monde', cities: [{ name: 'Paris', timezone: 'Europe/Paris' }, { name: 'New York', timezone: 'America/New_York' }, { name: 'Tokyo', timezone: 'Asia/Tokyo' }] }
 }
 export function defaultBoard(): BoardConfig {
@@ -139,7 +141,7 @@ export function validFeedUrl(value: string) {
 }
 export function parseBoard(value: unknown): BoardConfig | null {
   if (!value || typeof value !== 'object') return null
-  const config = value as BoardConfig
+  const config = JSON.parse(JSON.stringify(value)) as BoardConfig
   if (config.version !== 1 || !Array.isArray(config.widgets) || config.widgets.length > 24) return null
   const ids = new Set<string>()
   for (const p of config.widgets) {
@@ -156,7 +158,14 @@ export function parseBoard(value: unknown): BoardConfig | null {
       // These source widgets have no per-widget settings in the prototype.
     }
     else if (p.type === 'cinema') {
-      if (!isCinemaAreaId(p.cinemaArea)) return null
+      if (p.cinemaLocation !== undefined) {
+        if (!isCinemaLocation(p.cinemaLocation)) return null
+      } else {
+        const migratedLocation = cinemaLocationFromLegacyArea(p.cinemaArea)
+        if (!migratedLocation) return null
+        p.cinemaLocation = migratedLocation
+      }
+      delete p.cinemaArea
     }
     else if (p.type === 'weather') {
       const l = p.location
@@ -169,5 +178,5 @@ export function parseBoard(value: unknown): BoardConfig | null {
     const p = config.widgets[a]!, q = config.widgets[b]!
     if (p.x < q.x + q.w && p.x + p.w > q.x && p.y < q.y + q.h && p.y + p.h > q.y) return null
   }
-  return JSON.parse(JSON.stringify(config))
+  return config
 }

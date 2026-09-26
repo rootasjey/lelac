@@ -78,14 +78,30 @@ describe('board configuration', () => {
       id: 'cinema-programme',
       type: 'cinema',
       title: 'Séances de cinéma',
-      cinemaArea: 'versailles',
+      cinemaLocation: { inseeCode: '78646', name: 'Versailles', department: '78', lat: 48.8014, lon: 2.1301 },
       w: 12,
     })])
     expect(parseBoard(defaultDashboard('cinema'))).not.toBeNull()
 
-    const invalidArea = JSON.parse(JSON.stringify(defaultDashboard('cinema')))
-    invalidArea.widgets[0].cinemaArea = 'maurepas'
-    expect(parseBoard(invalidArea)).toBeNull()
+    const invalidLocation = JSON.parse(JSON.stringify(defaultDashboard('cinema')))
+    invalidLocation.widgets[0].cinemaLocation.lat = 120
+    expect(parseBoard(invalidLocation)).toBeNull()
+  })
+
+  it('migrates stored cinema area settings to a canonical commune location', () => {
+    const legacy = {
+      version: 1,
+      widgets: [{
+        ...widgetDefaults('cinema', 'legacy-cinema'),
+        cinemaLocation: undefined,
+        cinemaArea: 'trappes',
+      }],
+    }
+    const parsed = parseBoard(legacy)
+    expect(parsed?.widgets[0]).toMatchObject({
+      cinemaLocation: { inseeCode: '78621', name: 'Trappes', department: '78' },
+    })
+    expect(parsed?.widgets[0]).not.toHaveProperty('cinemaArea')
   })
 
   it('upgrades only the untouched one-widget Tech seed', () => {
