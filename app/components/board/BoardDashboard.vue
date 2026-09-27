@@ -28,7 +28,7 @@
         <div v-if="!store.widgets.length" class="empty-board"><h2>Votre tableau attend ses premières sources.</h2><button class="native-button" @click="editing = true; picker?.showModal()">Ajouter un widget</button></div>
         <GridLayout v-else-if="!mobile" ref="grid" :layout="layout" :col-num="12" :row-height="40" :gap="gridGap" :is-draggable="editing" :is-resizable="editing" :resize-config="resizeConfig" @update:layout="store.setLayout" @interaction-start="gridInteracting = true" @interaction-end="gridInteracting = false" @error="store.message = 'La grille a rencontré une erreur'" @operation-rejected="store.message = 'Cette position ou dimension n’est pas disponible'">
           <GridItem v-for="widget in store.widgets" :key="widget.id" :i="widget.id" drag-allow-from=".widget-drag-handle" class="board-grid-item">
-            <div class="widget-shell" :class="{ 'cinema-widget-shell': widget.type === 'cinema' }">
+            <div class="widget-shell" :class="{ 'cinema-widget-shell': widget.type === 'cinema', 'cinema-widget-resizing': editing && widget.type === 'cinema' }">
               <header class="widget-titlebar">
                 <NTooltip :content="widget.title"><h2>{{ widget.title }}</h2></NTooltip>
                 <div class="widget-title-actions">
@@ -50,7 +50,7 @@
           </GridItem>
         </GridLayout>
         <div v-else class="mobile-board">
-          <div v-for="widget in ordered" :key="widget.id" class="widget-shell" :class="{ 'cinema-widget-shell': widget.type === 'cinema' }" :style="{ height: widget.type === 'rss' || widget.type === 'github-trending' || widget.type === 'github-developers-trending' || widget.type === 'hacker-news' || widget.type === 'openrouter-models' || widget.type === 'cinema' ? '486px' : '306px' }">
+          <div v-for="widget in ordered" :key="widget.id" class="widget-shell" :class="{ 'cinema-widget-shell': widget.type === 'cinema', 'cinema-widget-resizing': editing && widget.type === 'cinema' }" :style="{ height: widget.type === 'rss' || widget.type === 'github-trending' || widget.type === 'github-developers-trending' || widget.type === 'hacker-news' || widget.type === 'openrouter-models' || widget.type === 'cinema' ? '486px' : '306px' }">
             <header class="widget-titlebar">
               <NTooltip :content="widget.title"><h2>{{ widget.title }}</h2></NTooltip>
               <div class="widget-title-actions">
@@ -250,7 +250,6 @@ function setYoutubeAvailability(id: string, available: boolean) {
 .board-widget.editing { border-color: #766b4c; }
 .board-widget.youtube-widget { border: 0; background: transparent; border-radius: 0; }
 .board-widget.cinema-widget { border: 0; background: transparent; border-radius: 0; }
-.board-widget.cinema-widget.editing { outline: 1px solid #766b4c; outline-offset: -1px; }
 .widget-titlebar h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .widget-titlebar { gap: 10px; display: flex; align-items: center; justify-content: space-between; flex: 0 0 40px; padding: 0 6px; }
 .editing .widget-titlebar { cursor: grab; touch-action: none; }
@@ -258,7 +257,11 @@ h2 { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacin
 .widget-title-actions { display: flex; min-width: 0; flex-shrink: 0; align-items: center; justify-content: flex-end; gap: 8px; }
 .youtube-list-action { min-height: 40px; padding-inline: 8px; color: #aaa7b2; font: inherit; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
 .youtube-list-action:hover { color: #d8c58f; }
-.cinema-widget-shell { container-type: inline-size; }
+.cinema-widget-shell { container-type: inline-size; border-radius: 8px; background: #1b1a20; }
+.cinema-widget-shell.cinema-widget-resizing { outline: 1px solid #766b4c; outline-offset: -1px; }
+.cinema-widget-shell > .widget-titlebar { padding-inline: 16px; border-bottom: 1px solid #302e35; }
+.cinema-widget-shell > .board-widget { padding-top: 8px; }
+.cinema-widget-shell .youtube-list-action { height: 32px; min-height: 32px; max-height: 32px; padding-block: 0; }
 @container (max-width: 640px) {
   .cinema-widget-shell .youtube-list-action { display: inline-grid; width: 32px; min-width: 32px; height: 32px; min-height: 32px; box-sizing: border-box; padding: 0; place-items: center; }
   .cinema-widget-shell .youtube-list-action-label { display: none; }
