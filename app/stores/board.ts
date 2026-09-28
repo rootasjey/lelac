@@ -26,7 +26,7 @@ export const useBoardStore = defineStore('board', () => {
         const parsed = parseBoard(JSON.parse(raw))
         if (!parsed) throw new Error('Invalid configuration')
         config.value = upgradeDashboardDefaults(dashboard, parsed)
-        if (config.value !== parsed) persist()
+        if (JSON.stringify(config.value) !== raw) persist()
         message.value = ''
       } else persist()
     } catch { message.value = 'Configuration illisible : un tableau initial a été chargé' }

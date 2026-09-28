@@ -7,11 +7,13 @@
   <BoardHackerNews v-else-if="widget.type === 'hacker-news'" @more="$emit('more')" />
   <BoardOpenRouterModels v-else-if="widget.type === 'openrouter-models'" :dashboard-id="dashboardId" :widget-id="widget.id" />
   <BoardCinema v-else-if="widget.type === 'cinema' && widget.cinemaLocation" :location="widget.cinemaLocation" />
+  <BoardCinemaReleases v-else-if="widget.type === 'cinema-releases'" />
   <BoardClock v-else :cities="widget.cities!" />
 </template>
 <script setup lang="ts">
 import BoardYouTube from './BoardYouTube.vue'
 import BoardCinema from './BoardCinema.vue'
+import BoardCinemaReleases from './BoardCinemaReleases.vue'
 import type { BoardWidget, DashboardId } from '~/utils/boardConfig'
 defineProps<{ widget: BoardWidget; dashboardId: DashboardId }>()
 defineEmits<{ more: []; availability: [hasVideos: boolean] }>()

@@ -6,9 +6,12 @@ import { CINEMA_SEARCH_RADIUS_KM, groupCinemaShowings, type CinemaFilmSchedule, 
 const props = withDefaults(defineProps<{ location: CinemaLocation; expanded?: boolean }>(), { expanded: false })
 const body = ref<HTMLElement>()
 const measurement = ref<HTMLOListElement>()
+const filmLoadSentinel = ref<HTMLLIElement>()
 const bodyWidth = ref(0)
 const firstRowCapacity = ref(1)
 const activeSlide = ref(0)
+const expandedBatchSize = 24
+const expandedVisibleCount = ref(expandedBatchSize)
 const expanded = computed(() => props.expanded)
 const { capacity, measure } = useBoardVisibleItemCount(body, measurement, expanded)
 const { value, loading, error, refresh } = useBoardSource<CinemaScheduleResult>(
@@ -18,6 +21,7 @@ const { value, loading, error, refresh } = useBoardSource<CinemaScheduleResult>(
 )
 
 const films = computed(() => groupCinemaShowings(value.value?.showings ?? []))
+const expandedFilms = computed(() => films.value.slice(0, expandedVisibleCount.value))
 const carousel = computed(() => !expanded.value && bodyWidth.value > 0 && bodyWidth.value < 490)
 const horizontalGrid = computed(() => !expanded.value && bodyWidth.value >= 490 && bodyWidth.value < 900)
 const posterGrid = computed(() => !expanded.value && bodyWidth.value >= 900)
@@ -27,6 +31,7 @@ const visible = computed(() => expanded.value || carousel.value
 const locationName = computed(() => props.location.name)
 
 let bodyResizeObserver: ResizeObserver | undefined
+let filmLoadObserver: IntersectionObserver | undefined
 let scrollFrame = 0
 
 onMounted(() => {
@@ -36,13 +41,28 @@ onMounted(() => {
     bodyWidth.value = entry?.contentRect.width ?? body.value?.clientWidth ?? 0
   })
   bodyResizeObserver.observe(body.value)
+  if (expanded.value && typeof IntersectionObserver !== 'undefined') {
+    filmLoadObserver = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting || expandedVisibleCount.value >= films.value.length) return
+      filmLoadObserver?.unobserve(entry.target)
+      expandedVisibleCount.value = Math.min(expandedVisibleCount.value + expandedBatchSize, films.value.length)
+      void nextTick(observeFilmSentinel)
+    }, {
+      root: body.value.closest('.widget-detail-scroll'),
+      rootMargin: '700px 0px',
+    })
+    observeFilmSentinel()
+  }
   void nextTick(measureGridCapacity)
 })
 
 onBeforeUnmount(() => {
   bodyResizeObserver?.disconnect()
+  filmLoadObserver?.disconnect()
   cancelAnimationFrame(scrollFrame)
 })
+
+watch([() => films.value.length, expandedVisibleCount], () => nextTick(observeFilmSentinel), { flush: 'post' })
 
 watch(() => films.value.length, (length) => {
   activeSlide.value = Math.min(activeSlide.value, Math.max(0, length - 1))
@@ -70,6 +90,12 @@ function measureGridCapacity() {
   const firstRowTop = cards[0]?.getBoundingClientRect().top
   if (firstRowTop === undefined) return
   firstRowCapacity.value = cards.filter((card) => Math.abs(card.getBoundingClientRect().top - firstRowTop) <= 1).length
+}
+
+function observeFilmSentinel() {
+  const sentinel = filmLoadSentinel.value
+  if (!expanded.value || !sentinel || expandedVisibleCount.value >= films.value.length) return
+  filmLoadObserver?.observe(sentinel)
 }
 
 function dayLabel(value: string) {
@@ -124,7 +150,7 @@ function syncActiveSlide() {
       </p>
       <p v-else-if="!loading && !films.length" class="cinema-state">Aucune séance à venir trouvée dans un rayon de {{ CINEMA_SEARCH_RADIUS_KM }} km autour de {{ locationName }}.</p>
       <ol v-else class="cinema-list">
-        <li v-for="(film, filmIndex) in visible" :key="film.key" class="film-card" :class="{ 'film-card-expanded': expanded }" :style="{ '--reveal-index': Math.min(filmIndex, 12) }">
+        <li v-for="(film, filmIndex) in expanded ? expandedFilms : visible" :key="film.key" class="film-card" :class="{ 'film-card-expanded': expanded }" :style="{ '--reveal-index': Math.min(filmIndex, 12) }">
           <a v-if="film.poster && bookingUrl(film)" class="poster-link" :href="bookingUrl(film)" target="_blank" rel="noopener noreferrer" :aria-label="`Réserver ${film.filmTitle}`">
             <img :src="film.poster" :alt="`Affiche de ${film.filmTitle}`" loading="lazy">
             <span class="poster-arrow" aria-hidden="true"><span class="poster-arrow-icon i-ph-arrow-up-right-bold" /></span>
@@ -174,6 +200,7 @@ function syncActiveSlide() {
             </template>
           </div>
         </li>
+        <li v-if="expanded && expandedVisibleCount < films.length" ref="filmLoadSentinel" class="cinema-load-sentinel" aria-hidden="true" />
       </ol>
 
       <ol v-if="!expanded" ref="measurement" class="cinema-measure" aria-hidden="true" inert>
@@ -235,6 +262,7 @@ h3 { display: -webkit-box; overflow: hidden; margin: 0; color: #e8d69f; font-fam
 footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex: 0 0 40px; margin-top: 8px; }
 .source-label { overflow: hidden; color: #85838d; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .cinema-measure { position: absolute; inset: 0 auto auto 0; width: 100%; visibility: hidden; pointer-events: none; }
+.cinema-load-sentinel { grid-column: 1 / -1; height: 1px; list-style: none; }
 .cinema-measure .film-card { background: transparent; }
 .cinema-carousel .cinema-body { overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .cinema-carousel .cinema-body::-webkit-scrollbar { display: none; }

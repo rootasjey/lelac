@@ -83,6 +83,23 @@ export interface CinemaLocationOption extends CinemaLocation {
   population: number
 }
 
+export interface CinemaRelease {
+  key: string
+  title: string
+  poster: string
+  genre: string
+  durationMinutes: number | null
+  firstScreeningAt: string
+  cinema: string
+  city: string
+}
+
+export interface CinemaReleaseResult {
+  releases: CinemaRelease[]
+  total: number
+  fetchedAt: string
+}
+
 export interface RawCinemaShowing {
   _id?: unknown
   filmid?: unknown
@@ -196,4 +213,40 @@ export function groupCinemaShowings(showings: CinemaShowing[]): CinemaFilmSchedu
       venues: film.venues.sort((a, b) => Date.parse(a.showings[0]?.startsAt ?? '') - Date.parse(b.showings[0]?.startsAt ?? '')),
     }))
     .sort((a, b) => Date.parse(a.showings[0]?.startsAt ?? '') - Date.parse(b.showings[0]?.startsAt ?? ''))
+}
+
+export function groupUpcomingCinemaReleases(rows: RawCinemaShowing[], now = Date.now(), days = 90): CinemaRelease[] {
+  const films = new Map<string, CinemaRelease>()
+  const limit = now + days * 24 * 60 * 60 * 1000
+
+  for (const row of rows) {
+    const startsAt = parseDate(row.showstart)
+    const title = text(row.filmtitle)
+    const cinema = text(row.cinenom)
+    const city = text(row.cineville)
+    if (!startsAt || startsAt < now || startsAt > limit || !title || !cinema || !city) continue
+    // SCARE's film IDs can differ between cinema ticketing systems. For a
+    // nationwide view, normalize the title so a film appears only once.
+    const key = title
+      .normalize('NFKD')
+      .replace(/\p{Diacritic}/gu, '')
+      .replace(/[^\p{Letter}\p{Number}]+/gu, ' ')
+      .trim()
+      .toLocaleLowerCase('fr-FR')
+    const previous = films.get(key)
+    if (previous && Date.parse(previous.firstScreeningAt) <= startsAt) continue
+    const duration = number(row.filmduration)
+    films.set(key, {
+      key,
+      title,
+      poster: /^https:\/\//i.test(text(row.filmposter)) ? text(row.filmposter) : '',
+      genre: text(row.filmgenre),
+      durationMinutes: duration !== null && duration > 0 ? Math.round(duration > 300 ? duration / 60 : duration) : null,
+      firstScreeningAt: new Date(startsAt).toISOString(),
+      cinema,
+      city,
+    })
+  }
+
+  return [...films.values()].sort((a, b) => Date.parse(a.firstScreeningAt) - Date.parse(b.firstScreeningAt))
 }

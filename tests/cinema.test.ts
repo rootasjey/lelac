@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { groupCinemaShowings, isCinemaLocation, normalizeCinemaShowings, type CinemaLocation } from '../shared/utils/cinema'
+import { groupCinemaShowings, groupUpcomingCinemaReleases, isCinemaLocation, normalizeCinemaShowings, type CinemaLocation } from '../shared/utils/cinema'
 
 const now = Date.parse('2026-09-22T12:00:00.000Z')
 const trappes: CinemaLocation = { inseeCode: '78621', name: 'Trappes', department: '78', lat: 48.7771, lon: 2.0028 }
@@ -78,4 +78,15 @@ describe('cinema schedule normalization', () => {
     expect(films[0]?.showings).toHaveLength(2)
     expect(films[0]?.venues.map(venue => venue.cinema)).toEqual(['Cinéma test', 'Autre cinéma'])
   })
+
+  it('shows each upcoming film once using its earliest reported screening', () => {
+    const releases = groupUpcomingCinemaReleases([
+      showing({ showstart: '2026-10-02T20:00:00+0200', cinenom: 'Cinéma B' }),
+      showing({ filmid: 'film-different-system-id', filmtitle: 'FÍLM TEST', showstart: '2026-09-30T19:00:00+0200', cinenom: 'Cinéma A' }),
+      showing({ filmid: 'film-later', filmtitle: 'Trop loin', showstart: '2027-01-01T19:00:00+0100' }),
+    ], now)
+    expect(releases).toHaveLength(1)
+    expect(releases[0]).toMatchObject({ title: 'FÍLM TEST', cinema: 'Cinéma A', firstScreeningAt: '2026-09-30T17:00:00.000Z' })
+  })
+
 })

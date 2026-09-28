@@ -6,6 +6,7 @@
     <NDropdownMenuContent align="end" :side-offset="6" class="widget-menu-content">
       <NDropdownMenuItem class="widget-menu-item" leading="i-ph-gear-six-bold" @select="emit('configure')">Configurer</NDropdownMenuItem>
       <NDropdownMenuItem class="widget-menu-item" leading="i-ph-arrows-out-cardinal-bold" @select="emit('adjust')">Ajuster la taille et la position</NDropdownMenuItem>
+      <NDropdownMenuItem class="widget-menu-item widget-menu-item-danger" leading="i-ph-trash-bold" @select="emit('remove')">Supprimer le widget</NDropdownMenuItem>
     </NDropdownMenuContent>
   </NDropdownMenuRoot>
 </template>
@@ -14,6 +15,7 @@
 const emit = defineEmits<{
   configure: []
   adjust: []
+  remove: []
 }>()
 </script>
 
@@ -48,6 +50,23 @@ const emit = defineEmits<{
 .widget-menu-content .widget-menu-item .btn-leading {
   color: #d8c58f;
   font-size: 15px;
+}
+
+.widget-menu-content .widget-menu-item-danger {
+  margin-top: 5px;
+  border-top: 1px solid #3a373e;
+  border-radius: 0 0 3px 3px;
+  padding-top: 10px;
+  color: #e59b91;
+}
+
+.widget-menu-content .widget-menu-item-danger .btn-leading {
+  color: inherit;
+}
+
+.widget-menu-content .widget-menu-item-danger[data-highlighted] {
+  background: #422b30;
+  color: #ffc0b3;
 }
 
 .widget-menu-trigger {

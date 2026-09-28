@@ -2,7 +2,7 @@ import { normalizeFeedUrl } from '~~/shared/utils/feedUrl'
 import { normalizeYoutubeChannelId } from '~~/shared/utils/youtubeFeed'
 import { cinemaLocationFromLegacyArea, isCinemaLocation, type CinemaLocation, type LegacyCinemaAreaId } from '~~/shared/utils/cinema'
 
-export type WidgetKind = 'rss' | 'weather' | 'clock' | 'youtube' | 'github-trending' | 'github-developers-trending' | 'hacker-news' | 'openrouter-models' | 'cinema'
+export type WidgetKind = 'rss' | 'weather' | 'clock' | 'youtube' | 'github-trending' | 'github-developers-trending' | 'hacker-news' | 'openrouter-models' | 'cinema' | 'cinema-releases'
 export type GitHubTrendingPeriod = 'daily' | 'weekly' | 'monthly'
 export interface City { name: string; timezone: string }
 export type DashboardId = 'daily' | 'tech' | 'cinema'
@@ -40,6 +40,7 @@ export function widgetDefaults(type: WidgetKind, id: string): BoardWidget {
   if (type === 'hacker-news') return { ...base, title: 'Hacker News', w: 8, h: 8 }
   if (type === 'openrouter-models') return { ...base, title: 'Modèles d’IA récents', w: 8, h: 8 }
   if (type === 'cinema') return { ...base, title: 'Séances de cinéma', w: 12, h: 9, cinemaLocation: cinemaLocationFromLegacyArea('versailles')! }
+  if (type === 'cinema-releases') return { ...base, title: 'Programmation à venir', w: 8, h: 8 }
   return { ...base, title: 'Heures du monde', cities: [{ name: 'Paris', timezone: 'Europe/Paris' }, { name: 'New York', timezone: 'America/New_York' }, { name: 'Tokyo', timezone: 'Asia/Tokyo' }] }
 }
 export function defaultBoard(): BoardConfig {
@@ -142,7 +143,10 @@ export function validFeedUrl(value: string) {
 export function parseBoard(value: unknown): BoardConfig | null {
   if (!value || typeof value !== 'object') return null
   const config = JSON.parse(JSON.stringify(value)) as BoardConfig
-  if (config.version !== 1 || !Array.isArray(config.widgets) || config.widgets.length > 24) return null
+  if (config.version !== 1 || !Array.isArray(config.widgets)) return null
+  // Retire proprement les anciens widgets d’événements sans invalider le reste du tableau.
+  config.widgets = config.widgets.filter(widget => !widget || typeof widget !== 'object' || (widget as { type?: unknown }).type !== 'cinema-events')
+  if (config.widgets.length > 24) return null
   const ids = new Set<string>()
   for (const p of config.widgets) {
     if (!p || typeof p.id !== 'string' || !p.id || ids.has(p.id) || typeof p.title !== 'string' || !p.title.trim() || p.title.length > 100) return null
@@ -166,6 +170,9 @@ export function parseBoard(value: unknown): BoardConfig | null {
         p.cinemaLocation = migratedLocation
       }
       delete p.cinemaArea
+    }
+    else if (p.type === 'cinema-releases') {
+      // National listing based on the first upcoming screening recorded by the SCARE network.
     }
     else if (p.type === 'weather') {
       const l = p.location

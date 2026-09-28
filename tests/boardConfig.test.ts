@@ -104,6 +104,18 @@ describe('board configuration', () => {
     expect(parsed?.widgets[0]).not.toHaveProperty('cinemaArea')
   })
 
+  it('removes obsolete cinema event widgets while preserving the rest of a saved board', () => {
+    const board: unknown = {
+      version: 1 as const,
+      widgets: [
+        { ...widgetDefaults('cinema', 'local-showtimes'), type: 'cinema-events' },
+        widgetDefaults('cinema-releases', 'upcoming-releases'),
+      ],
+    }
+
+    expect(parseBoard(board)?.widgets).toEqual([widgetDefaults('cinema-releases', 'upcoming-releases')])
+  })
+
   it('upgrades only the untouched one-widget Tech seed', () => {
     const oldSeed = {
       version: 1 as const,
