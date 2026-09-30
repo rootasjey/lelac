@@ -172,6 +172,7 @@ const widgetCatalog = [
   { type: 'cinema-releases', title: 'Programmation à venir', description: 'Les prochains films programmés dans les cinémas SCARE', icon: 'i-ph-calendar-dots', accent: 'cinema' },
   { type: 'netflix-releases', title: 'Sorties Netflix', description: 'Les sorties annoncées prochainement en France', icon: 'i-ph-television-simple', accent: 'netflix' },
   { type: 'apple-tv-releases', title: 'Sorties Apple TV', description: 'Les Apple Originals annoncés avec une date de sortie', icon: 'i-ph-apple-logo', accent: 'apple-tv' },
+  { type: 'prime-video-releases', title: 'Sorties Prime Video', description: 'Les films et séries datés au calendrier officiel français', icon: 'i-ph-amazon-logo', accent: 'prime-video' },
   { type: 'weather', title: 'Météo', description: 'Les conditions et températures de votre ville', icon: 'i-ph-cloud-sun', accent: 'weather' },
   { type: 'clock', title: 'Horloges', description: 'L’heure dans une à trois villes', icon: 'i-ph-clock', accent: 'clock' },
 ] satisfies { type: WidgetKind; title: string; description: string; icon: string; accent: string }[]
@@ -200,7 +201,7 @@ const detailDrawerUna = computed(() => ({
   ].join(' '),
 }))
 function isCinemaWidget(type: WidgetKind | undefined): boolean {
-  return type === 'cinema' || type === 'cinema-releases' || type === 'netflix-releases' || type === 'apple-tv-releases'
+  return type === 'cinema' || type === 'cinema-releases' || type === 'netflix-releases' || type === 'apple-tv-releases' || type === 'prime-video-releases'
 }
 const layout = computed<Layout>(() => store.widgets.map(w => ({ i: w.id, x: w.x, y: w.y, w: w.w, h: w.h, minW: 3, minH: 4, maxH: 16 })))
 const ordered = computed(() => [...store.widgets].sort((a, b) => a.y - b.y || a.x - b.x))
@@ -406,6 +407,7 @@ select { background: #242329; border: 1px solid #55515d; border-radius: 3px; col
 .widget-catalog-illustration.accent-cinema { background: #342a2d; color: #e59c9e; }
 .widget-catalog-illustration.accent-netflix { background: #342628; color: #ef7178; }
 .widget-catalog-illustration.accent-apple-tv { background: #302e3a; color: #c4b8ed; }
+.widget-catalog-illustration.accent-prime-video { background: #253441; color: #8ec9ef; }
 .widget-catalog-illustration.accent-weather { background: #292f38; color: #9ac6df; }
 .widget-catalog-illustration.accent-clock { background: #302d37; color: #c4afd9; }
 .widget-catalog-copy { display: flex; min-width: 0; flex-direction: column; gap: 5px; }

@@ -72,7 +72,7 @@ describe('board configuration', () => {
     expect(parseBoard(tech)).not.toBeNull()
   })
 
-  it('provides a Cinema dashboard with local screenings, movie trailers, Netflix releases, and Apple Originals by default', () => {
+  it('provides a Cinema dashboard with local screenings, trailers, and official streaming calendars by default', () => {
     expect(dashboardStorageKey('cinema')).toBe('encascade:board:v1:cinema')
     expect(defaultDashboard('cinema').widgets).toEqual([
       expect.objectContaining({
@@ -106,6 +106,14 @@ describe('board configuration', () => {
         y: 25,
         h: 8,
       }),
+      expect.objectContaining({
+        id: 'prime-video-releases',
+        type: 'prime-video-releases',
+        title: 'Sorties Prime Video',
+        w: 12,
+        y: 33,
+        h: 8,
+      }),
     ])
     expect(parseBoard(defaultDashboard('cinema'))).not.toBeNull()
 
@@ -123,6 +131,9 @@ describe('board configuration', () => {
 
     const previousSeedWithNetflix = { version: 1 as const, widgets: defaultDashboard('cinema').widgets.slice(0, 3) }
     expect(upgradeDashboardDefaults('cinema', previousSeedWithNetflix)).toEqual(defaultDashboard('cinema'))
+
+    const previousSeedWithAppleTv = { version: 1 as const, widgets: defaultDashboard('cinema').widgets.slice(0, 4) }
+    expect(upgradeDashboardDefaults('cinema', previousSeedWithAppleTv)).toEqual(defaultDashboard('cinema'))
 
     const customized = JSON.parse(JSON.stringify(previousSeed)) as typeof previousSeed
     customized.widgets[0]!.cinemaLocation!.name = 'Toulouse'
