@@ -1,4 +1,5 @@
 import { youtubeChannelHandleFromInput } from '../../shared/utils/youtubeFeed'
+import { resolveYoutubeChannelIdByHandle } from './youtubeDataApi'
 
 const CHANNEL_ID_PATTERN = /^UC[A-Za-z0-9_-]{22}$/
 const CHANNEL_ID_SOURCE = '(UC[A-Za-z0-9_-]{22})'
@@ -80,9 +81,16 @@ function normalizeYoutubePageUrl(input: string): URL | null {
   }
 }
 
-export async function resolveYoutubeChannelId(input: string): Promise<string> {
+export async function resolveYoutubeChannelId(input: string, apiKey?: string): Promise<string> {
   const handle = youtubeChannelHandleFromInput(input)
   if (!handle) throw new Error('Invalid YouTube channel handle')
+
+  if (apiKey?.trim()) {
+    try {
+      const channelId = await resolveYoutubeChannelIdByHandle(handle, apiKey.trim())
+      if (channelId) return channelId
+    } catch { /* YouTube's page resolver remains available when the Data API cannot resolve a handle. */ }
+  }
 
   let url = new URL(`/@${handle}`, 'https://www.youtube.com')
   const visited = new Set<string>()

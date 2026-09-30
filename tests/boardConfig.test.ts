@@ -72,20 +72,50 @@ describe('board configuration', () => {
     expect(parseBoard(tech)).not.toBeNull()
   })
 
-  it('provides a Cinema dashboard with Versailles selected by default', () => {
+  it('provides a Cinema dashboard with local screenings, French movie trailers, and Netflix releases by default', () => {
     expect(dashboardStorageKey('cinema')).toBe('encascade:board:v1:cinema')
-    expect(defaultDashboard('cinema').widgets).toEqual([expect.objectContaining({
-      id: 'cinema-programme',
-      type: 'cinema',
-      title: 'Séances de cinéma',
-      cinemaLocation: { inseeCode: '78646', name: 'Versailles', department: '78', lat: 48.8014, lon: 2.1301 },
-      w: 12,
-    })])
+    expect(defaultDashboard('cinema').widgets).toEqual([
+      expect.objectContaining({
+        id: 'cinema-programme',
+        type: 'cinema',
+        title: 'Séances de cinéma',
+        cinemaLocation: { inseeCode: '78646', name: 'Versailles', department: '78', lat: 48.8014, lon: 2.1301 },
+        w: 12,
+      }),
+      expect.objectContaining({
+        id: 'cinema-trailers',
+        type: 'youtube',
+        title: 'Bandes-annonces · FilmsActu',
+        channelId: 'UC_i8X3p8oZNaik8X513Zn1Q',
+        w: 12,
+        y: 9,
+      }),
+      expect.objectContaining({
+        id: 'netflix-releases',
+        type: 'netflix-releases',
+        title: 'Sorties Netflix',
+        w: 12,
+        y: 17,
+        h: 8,
+      }),
+    ])
     expect(parseBoard(defaultDashboard('cinema'))).not.toBeNull()
 
     const invalidLocation = JSON.parse(JSON.stringify(defaultDashboard('cinema')))
     invalidLocation.widgets[0].cinemaLocation.lat = 120
     expect(parseBoard(invalidLocation)).toBeNull()
+  })
+
+  it('adds default Cinema widgets only to untouched saved seeds', () => {
+    const previousSeed = { version: 1 as const, widgets: [widgetDefaults('cinema', 'cinema-programme')] }
+    expect(upgradeDashboardDefaults('cinema', previousSeed)).toEqual(defaultDashboard('cinema'))
+
+    const previousSeedWithTrailers = { version: 1 as const, widgets: defaultDashboard('cinema').widgets.slice(0, 2) }
+    expect(upgradeDashboardDefaults('cinema', previousSeedWithTrailers)).toEqual(defaultDashboard('cinema'))
+
+    const customized = JSON.parse(JSON.stringify(previousSeed)) as typeof previousSeed
+    customized.widgets[0]!.cinemaLocation!.name = 'Toulouse'
+    expect(upgradeDashboardDefaults('cinema', customized)).toBe(customized)
   })
 
   it('migrates stored cinema area settings to a canonical commune location', () => {

@@ -8,6 +8,7 @@
   <BoardOpenRouterModels v-else-if="widget.type === 'openrouter-models'" :dashboard-id="dashboardId" :widget-id="widget.id" />
   <BoardCinema v-else-if="widget.type === 'cinema' && widget.cinemaLocation" :location="widget.cinemaLocation" />
   <BoardCinemaReleases v-else-if="widget.type === 'cinema-releases'" />
+  <BoardNetflixReleases v-else-if="widget.type === 'netflix-releases'" />
   <BoardClock v-else :cities="widget.cities!" />
 </template>
 <script setup lang="ts">

@@ -19,6 +19,7 @@
       <BoardOpenRouterModels v-else-if="widget.type === 'openrouter-models'" :key="`${dashboardId}:${widget.id}:drawer`" :dashboard-id="dashboardId" :widget-id="widget.id" sort-scope="drawer" expanded />
       <BoardCinema v-else-if="widget.type === 'cinema' && widget.cinemaLocation" :location="widget.cinemaLocation" expanded />
       <BoardCinemaReleases v-else-if="widget.type === 'cinema-releases'" expanded />
+      <BoardNetflixReleases v-else-if="widget.type === 'netflix-releases'" expanded />
     </div>
   </div>
 </template>
@@ -39,6 +40,7 @@ const eyebrow = computed(() => {
     case 'openrouter-models': return 'OPENROUTER'
     case 'cinema':
     case 'cinema-releases': return 'CINÉMA · SCARE'
+    case 'netflix-releases': return 'STREAMING · NETFLIX FRANCE'
     default: return 'TOUS LES ARTICLES'
   }
 })

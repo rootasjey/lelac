@@ -8,7 +8,8 @@ export default defineCachedEventHandler(async (event) => {
   }
 
   try {
-    return { channelId: await resolveYoutubeChannelId(value) }
+    const apiKey = useRuntimeConfig(event).youtubeApiKey
+    return { channelId: await resolveYoutubeChannelId(value, typeof apiKey === 'string' ? apiKey : undefined) }
   } catch (cause) {
     const status = cause instanceof Error ? cause.message.match(/responded with status (\d+)/)?.[1] : undefined
     const statusMessage = status

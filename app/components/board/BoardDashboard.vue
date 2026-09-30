@@ -112,7 +112,7 @@
       </div>
       <footer class="dialog-footer"><NButton type="button" btn="soft" @click="adjustments?.close()">Terminer</NButton></footer>
     </dialog>
-    <NDialog v-if="detailWidget && ((detailWidget.type === 'cinema' && !mobile) || !['cinema', 'youtube', 'openrouter-models'].includes(detailWidget.type))" v-model:open="detailOpen">
+    <NDialog v-if="detailWidget && ((detailWidget.type === 'cinema' && !mobile) || !['cinema', 'openrouter-models'].includes(detailWidget.type))" v-model:open="detailOpen">
       <NDialogContent
         class="widget-detail-dialog-content"
         :_dialog-overlay="{ class: 'widget-detail-dialog-overlay' }"
@@ -124,11 +124,11 @@
       </NDialogContent>
     </NDialog>
     <NDrawer
-      v-if="detailWidget && (detailWidget.type === 'youtube' || detailWidget.type === 'openrouter-models' || (detailWidget.type === 'cinema' && mobile))"
+      v-if="detailWidget && (detailWidget.type === 'openrouter-models' || (detailWidget.type === 'cinema' && mobile))"
       v-model:open="detailOpen"
-      :direction="detailWidget.type === 'youtube' || mobile ? 'bottom' : 'right'"
+      :direction="mobile ? 'bottom' : 'right'"
       :title="detailWidget?.title ?? 'Actualités'"
-      :description="detailWidget?.type === 'youtube' ? 'Toutes les vidéos récentes de cette chaîne' : detailWidget?.type === 'openrouter-models' ? 'Les modèles récemment ajoutés au catalogue OpenRouter' : 'Les films et séances à venir dans la zone choisie'"
+      :description="detailWidget?.type === 'openrouter-models' ? 'Les modèles récemment ajoutés au catalogue OpenRouter' : 'Les films et séances à venir dans la zone choisie'"
       :una="detailDrawerUna"
     >
       <template #content>
@@ -170,6 +170,7 @@ const widgetCatalog = [
   { type: 'openrouter-models', title: 'Modèles d’IA récents', description: 'Les derniers ajouts au catalogue OpenRouter', icon: 'i-ph-cpu', accent: 'models' },
   { type: 'cinema', title: 'Séances de cinéma', description: 'La programmation des cinémas indépendants près de chez vous', icon: 'i-ph-film-strip', accent: 'cinema' },
   { type: 'cinema-releases', title: 'Programmation à venir', description: 'Les prochains films programmés dans les cinémas SCARE', icon: 'i-ph-calendar-dots', accent: 'cinema' },
+  { type: 'netflix-releases', title: 'Sorties Netflix', description: 'Les sorties annoncées prochainement en France', icon: 'i-ph-television-simple', accent: 'netflix' },
   { type: 'weather', title: 'Météo', description: 'Les conditions et températures de votre ville', icon: 'i-ph-cloud-sun', accent: 'weather' },
   { type: 'clock', title: 'Horloges', description: 'L’heure dans une à trois villes', icon: 'i-ph-clock', accent: 'clock' },
 ] satisfies { type: WidgetKind; title: string; description: string; icon: string; accent: string }[]
@@ -188,7 +189,7 @@ const detailDrawerUna = computed(() => ({
   drawerContent: [
     'border-[#444149] bg-[#1a191f] p-0 text-[#e3e0e7]',
     'data-[vaul-drawer-direction=bottom]:h-[88dvh] data-[vaul-drawer-direction=bottom]:max-h-[88dvh] data-[vaul-drawer-direction=bottom]:rounded-t-xl data-[vaul-drawer-direction=bottom]:border-t',
-    detailWidget.value?.type === 'openrouter-models' || (!mobile.value && detailWidget.value?.type !== 'youtube')
+    detailWidget.value?.type === 'openrouter-models'
       ? 'data-[vaul-drawer-direction=right]:border-l'
       : '',
     detailWidget.value?.type === 'openrouter-models'
@@ -198,7 +199,7 @@ const detailDrawerUna = computed(() => ({
   ].join(' '),
 }))
 function isCinemaWidget(type: WidgetKind | undefined): boolean {
-  return type === 'cinema' || type === 'cinema-releases'
+  return type === 'cinema' || type === 'cinema-releases' || type === 'netflix-releases'
 }
 const layout = computed<Layout>(() => store.widgets.map(w => ({ i: w.id, x: w.x, y: w.y, w: w.w, h: w.h, minW: 3, minH: 4, maxH: 16 })))
 const ordered = computed(() => [...store.widgets].sort((a, b) => a.y - b.y || a.x - b.x))
@@ -402,6 +403,7 @@ select { background: #242329; border: 1px solid #55515d; border-radius: 3px; col
 .widget-catalog-illustration.accent-news { background: #332d25; color: #e7bf72; }
 .widget-catalog-illustration.accent-models { background: #2b2c38; color: #b8b1ed; }
 .widget-catalog-illustration.accent-cinema { background: #342a2d; color: #e59c9e; }
+.widget-catalog-illustration.accent-netflix { background: #342628; color: #ef7178; }
 .widget-catalog-illustration.accent-weather { background: #292f38; color: #9ac6df; }
 .widget-catalog-illustration.accent-clock { background: #302d37; color: #c4afd9; }
 .widget-catalog-copy { display: flex; min-width: 0; flex-direction: column; gap: 5px; }

@@ -5,6 +5,7 @@ const VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{11}$/
 
 interface YoutubeChannelListResponse {
   items?: Array<{
+    id?: string
     snippet?: { title?: string }
     contentDetails?: { relatedPlaylists?: { uploads?: string } }
   }>
@@ -32,6 +33,15 @@ async function youtubeApiGet<T>(resource: string, parameters: Record<string, str
   const response = await fetcher(url, { headers: { accept: 'application/json' } })
   if (!response.ok) throw new Error(`YouTube Data API returned HTTP ${response.status}`)
   return await response.json() as T
+}
+
+export async function resolveYoutubeChannelIdByHandle(handle: string, apiKey: string, fetcher: YoutubeFetch = fetch): Promise<string | null> {
+  const channels = await youtubeApiGet<YoutubeChannelListResponse>('channels', {
+    part: 'id',
+    forHandle: handle.replace(/^@/, ''),
+  }, apiKey, fetcher)
+  const id = channels.items?.[0]?.id
+  return id && /^UC[A-Za-z0-9_-]{22}$/.test(id) ? id : null
 }
 
 export async function fetchYoutubeVideos(channelId: string, apiKey: string, fetcher: YoutubeFetch = fetch): Promise<FeedResult> {

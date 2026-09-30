@@ -30,6 +30,19 @@ describe('YouTube channel handle resolver', () => {
     expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ redirect: 'manual' })
   })
 
+  it('falls back to the HTML resolver when the Data API has no matching handle', async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ items: [] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(`<meta itemprop="channelId" content="${channelId}">`, {
+        headers: { 'content-type': 'text/html; charset=utf-8' },
+      }))
+
+    await expect(resolveYoutubeChannelId('https://www.youtube.com/@FilmsActu', 'server-only-key')).resolves.toBe(channelId)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(new URL(fetchMock.mock.calls[0]![0] as URL).searchParams.get('forHandle')).toBe('FilmsActu')
+    expect((fetchMock.mock.calls[1]?.[0] as URL).href).toBe('https://www.youtube.com/@FilmsActu')
+  })
+
   it('rejects a malformed handle without making a network request', async () => {
     await expect(resolveYoutubeChannelId('https://youtube.com.evil.example/@channel')).rejects.toThrow('Invalid YouTube channel handle')
     expect(fetchMock).not.toHaveBeenCalled()

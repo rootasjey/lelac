@@ -1,10 +1,22 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fetchYoutubeVideos } from '../server/utils/youtubeDataApi'
+import { fetchYoutubeVideos, resolveYoutubeChannelIdByHandle } from '../server/utils/youtubeDataApi'
 
 const channelId = 'UC_x5XG1OV2P6uZZ5FSM9Ttw'
 const uploadsPlaylistId = 'UU_x5XG1OV2P6uZZ5FSM9Ttw'
 
 describe('YouTube Data API feed adapter', () => {
+  it('resolves a channel handle through channels.list', async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ items: [{ id: channelId }] }), { status: 200 }))
+
+    await expect(resolveYoutubeChannelIdByHandle('@FilmsActu', 'server-only-key', fetcher)).resolves.toBe(channelId)
+    const request = new URL(fetcher.mock.calls[0]![0] as URL)
+    expect(request.pathname).toBe('/youtube/v3/channels')
+    expect(request.searchParams.get('part')).toBe('id')
+    expect(request.searchParams.get('forHandle')).toBe('FilmsActu')
+    expect(request.searchParams.has('maxResults')).toBe(false)
+    expect(request.searchParams.get('key')).toBe('server-only-key')
+  })
+
   it('loads a channel uploads playlist and maps its videos to feed articles', async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({
