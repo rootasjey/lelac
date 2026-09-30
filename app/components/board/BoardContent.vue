@@ -11,6 +11,7 @@
   <BoardNetflixReleases v-else-if="widget.type === 'netflix-releases'" />
   <BoardAppleTvReleases v-else-if="widget.type === 'apple-tv-releases'" />
   <BoardPrimeVideoReleases v-else-if="widget.type === 'prime-video-releases'" />
+  <BoardDisneyPlusAnnouncements v-else-if="widget.type === 'disney-plus-announcements'" />
   <BoardClock v-else :cities="widget.cities!" />
 </template>
 <script setup lang="ts">

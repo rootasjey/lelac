@@ -2,7 +2,7 @@ import { normalizeFeedUrl } from '~~/shared/utils/feedUrl'
 import { normalizeYoutubeChannelId } from '~~/shared/utils/youtubeFeed'
 import { cinemaLocationFromLegacyArea, isCinemaLocation, type CinemaLocation, type LegacyCinemaAreaId } from '~~/shared/utils/cinema'
 
-export type WidgetKind = 'rss' | 'weather' | 'clock' | 'youtube' | 'github-trending' | 'github-developers-trending' | 'hacker-news' | 'openrouter-models' | 'cinema' | 'cinema-releases' | 'netflix-releases' | 'apple-tv-releases' | 'prime-video-releases'
+export type WidgetKind = 'rss' | 'weather' | 'clock' | 'youtube' | 'github-trending' | 'github-developers-trending' | 'hacker-news' | 'openrouter-models' | 'cinema' | 'cinema-releases' | 'netflix-releases' | 'apple-tv-releases' | 'prime-video-releases' | 'disney-plus-announcements'
 export type GitHubTrendingPeriod = 'daily' | 'weekly' | 'monthly'
 export interface City { name: string; timezone: string }
 export type DashboardId = 'daily' | 'tech' | 'cinema'
@@ -44,6 +44,7 @@ export function widgetDefaults(type: WidgetKind, id: string): BoardWidget {
   if (type === 'netflix-releases') return { ...base, title: 'Sorties Netflix', w: 12, h: 8 }
   if (type === 'apple-tv-releases') return { ...base, title: 'Sorties Apple TV', w: 12, h: 8 }
   if (type === 'prime-video-releases') return { ...base, title: 'Sorties Prime Video', w: 12, h: 8 }
+  if (type === 'disney-plus-announcements') return { ...base, title: 'Annonces Disney+', w: 12, h: 8 }
   return { ...base, title: 'Heures du monde', cities: [{ name: 'Paris', timezone: 'Europe/Paris' }, { name: 'New York', timezone: 'America/New_York' }, { name: 'Tokyo', timezone: 'Asia/Tokyo' }] }
 }
 export function defaultBoard(): BoardConfig {
@@ -67,6 +68,7 @@ export function defaultDashboard(id: DashboardId): BoardConfig {
       { ...widgetDefaults('netflix-releases', 'netflix-releases'), y: 17 },
       { ...widgetDefaults('apple-tv-releases', 'apple-tv-releases'), y: 25 },
       { ...widgetDefaults('prime-video-releases', 'prime-video-releases'), y: 33 },
+      { ...widgetDefaults('disney-plus-announcements', 'disney-plus-announcements'), y: 41 },
     ],
   }
   return {
@@ -214,6 +216,9 @@ export function parseBoard(value: unknown): BoardConfig | null {
     }
     else if (p.type === 'prime-video-releases') {
       // Dated release calendar entries listed for France by Prime Video.
+    }
+    else if (p.type === 'disney-plus-announcements') {
+      // Upcoming Disney+ releases with an explicit date in Disney France announcements.
     }
     else if (p.type === 'weather') {
       const l = p.location

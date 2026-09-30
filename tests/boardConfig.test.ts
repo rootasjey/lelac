@@ -114,6 +114,14 @@ describe('board configuration', () => {
         y: 33,
         h: 8,
       }),
+      expect.objectContaining({
+        id: 'disney-plus-announcements',
+        type: 'disney-plus-announcements',
+        title: 'Annonces Disney+',
+        w: 12,
+        y: 41,
+        h: 8,
+      }),
     ])
     expect(parseBoard(defaultDashboard('cinema'))).not.toBeNull()
 

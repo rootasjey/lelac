@@ -22,6 +22,7 @@
       <BoardNetflixReleases v-else-if="widget.type === 'netflix-releases'" expanded />
       <BoardAppleTvReleases v-else-if="widget.type === 'apple-tv-releases'" expanded />
       <BoardPrimeVideoReleases v-else-if="widget.type === 'prime-video-releases'" expanded />
+      <BoardDisneyPlusAnnouncements v-else-if="widget.type === 'disney-plus-announcements'" expanded />
     </div>
   </div>
 </template>
@@ -45,6 +46,7 @@ const eyebrow = computed(() => {
     case 'netflix-releases': return 'STREAMING · NETFLIX FRANCE'
     case 'apple-tv-releases': return 'STREAMING · APPLE ORIGINALS'
     case 'prime-video-releases': return 'STREAMING · PRIME VIDEO FRANCE'
+    case 'disney-plus-announcements': return 'STREAMING · DISNEY+ FRANCE'
     default: return 'TOUS LES ARTICLES'
   }
 })
