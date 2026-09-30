@@ -20,6 +20,7 @@
       <BoardCinema v-else-if="widget.type === 'cinema' && widget.cinemaLocation" :location="widget.cinemaLocation" expanded />
       <BoardCinemaReleases v-else-if="widget.type === 'cinema-releases'" expanded />
       <BoardNetflixReleases v-else-if="widget.type === 'netflix-releases'" expanded />
+      <BoardAppleTvReleases v-else-if="widget.type === 'apple-tv-releases'" expanded />
     </div>
   </div>
 </template>
@@ -41,6 +42,7 @@ const eyebrow = computed(() => {
     case 'cinema':
     case 'cinema-releases': return 'CINÉMA · SCARE'
     case 'netflix-releases': return 'STREAMING · NETFLIX FRANCE'
+    case 'apple-tv-releases': return 'STREAMING · APPLE ORIGINALS'
     default: return 'TOUS LES ARTICLES'
   }
 })

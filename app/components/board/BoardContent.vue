@@ -9,6 +9,7 @@
   <BoardCinema v-else-if="widget.type === 'cinema' && widget.cinemaLocation" :location="widget.cinemaLocation" />
   <BoardCinemaReleases v-else-if="widget.type === 'cinema-releases'" />
   <BoardNetflixReleases v-else-if="widget.type === 'netflix-releases'" />
+  <BoardAppleTvReleases v-else-if="widget.type === 'apple-tv-releases'" />
   <BoardClock v-else :cities="widget.cities!" />
 </template>
 <script setup lang="ts">

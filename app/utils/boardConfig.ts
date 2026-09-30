@@ -2,7 +2,7 @@ import { normalizeFeedUrl } from '~~/shared/utils/feedUrl'
 import { normalizeYoutubeChannelId } from '~~/shared/utils/youtubeFeed'
 import { cinemaLocationFromLegacyArea, isCinemaLocation, type CinemaLocation, type LegacyCinemaAreaId } from '~~/shared/utils/cinema'
 
-export type WidgetKind = 'rss' | 'weather' | 'clock' | 'youtube' | 'github-trending' | 'github-developers-trending' | 'hacker-news' | 'openrouter-models' | 'cinema' | 'cinema-releases' | 'netflix-releases'
+export type WidgetKind = 'rss' | 'weather' | 'clock' | 'youtube' | 'github-trending' | 'github-developers-trending' | 'hacker-news' | 'openrouter-models' | 'cinema' | 'cinema-releases' | 'netflix-releases' | 'apple-tv-releases'
 export type GitHubTrendingPeriod = 'daily' | 'weekly' | 'monthly'
 export interface City { name: string; timezone: string }
 export type DashboardId = 'daily' | 'tech' | 'cinema'
@@ -42,6 +42,7 @@ export function widgetDefaults(type: WidgetKind, id: string): BoardWidget {
   if (type === 'cinema') return { ...base, title: 'Séances de cinéma', w: 12, h: 9, cinemaLocation: cinemaLocationFromLegacyArea('versailles')! }
   if (type === 'cinema-releases') return { ...base, title: 'Programmation à venir', w: 8, h: 8 }
   if (type === 'netflix-releases') return { ...base, title: 'Sorties Netflix', w: 12, h: 8 }
+  if (type === 'apple-tv-releases') return { ...base, title: 'Sorties Apple TV', w: 12, h: 8 }
   return { ...base, title: 'Heures du monde', cities: [{ name: 'Paris', timezone: 'Europe/Paris' }, { name: 'New York', timezone: 'America/New_York' }, { name: 'Tokyo', timezone: 'Asia/Tokyo' }] }
 }
 export function defaultBoard(): BoardConfig {
@@ -63,6 +64,7 @@ export function defaultDashboard(id: DashboardId): BoardConfig {
         h: 8,
       },
       { ...widgetDefaults('netflix-releases', 'netflix-releases'), y: 17 },
+      { ...widgetDefaults('apple-tv-releases', 'apple-tv-releases'), y: 25 },
     ],
   }
   return {
@@ -123,7 +125,10 @@ export function upgradeDashboardDefaults(id: DashboardId, board: BoardConfig): B
   if (id === 'cinema') {
     const previousSeed = { version: 1, widgets: [widgetDefaults('cinema', 'cinema-programme')] }
     const previousSeedWithTrailers = defaultDashboard('cinema').widgets.slice(0, 2)
-    return JSON.stringify(board) === JSON.stringify(previousSeed) || JSON.stringify(board.widgets) === JSON.stringify(previousSeedWithTrailers)
+    const previousSeedWithNetflix = defaultDashboard('cinema').widgets.slice(0, 3)
+    return JSON.stringify(board) === JSON.stringify(previousSeed)
+      || JSON.stringify(board.widgets) === JSON.stringify(previousSeedWithTrailers)
+      || JSON.stringify(board.widgets) === JSON.stringify(previousSeedWithNetflix)
       ? defaultDashboard('cinema')
       : board
   }
@@ -199,6 +204,9 @@ export function parseBoard(value: unknown): BoardConfig | null {
     }
     else if (p.type === 'netflix-releases') {
       // Public, non-exhaustive release dates announced by Netflix France.
+    }
+    else if (p.type === 'apple-tv-releases') {
+      // Dated upcoming Apple Originals listed by Apple TV Press France.
     }
     else if (p.type === 'weather') {
       const l = p.location
