@@ -14,7 +14,9 @@ const { capacity: cardCapacity } = useBoardVisibleItemCount(body, cardMeasuremen
 const { capacity: tableCapacity } = useBoardVisibleItemCount(body, tableMeasurement, expanded, 12)
 const { value, loading, error, refresh } = useBoardSource<OpenRouterModelsResult>(
   'openrouter-models:newest:v2',
-  () => $fetch<OpenRouterModelsResult>('/api/sources/openrouter-models'),
+  // The endpoint has its own server-side cache. Avoid a second browser cache
+  // so a long-lived tab cannot keep an older catalog after the server refreshes.
+  () => $fetch<OpenRouterModelsResult>('/api/sources/openrouter-models', { cache: 'no-store' }),
 )
 const models = computed(() => value.value?.models ?? [])
 const sortKey = ref<OpenRouterModelSortKey>('createdAt')
