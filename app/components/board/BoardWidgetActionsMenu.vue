@@ -23,9 +23,9 @@ const emit = defineEmits<{
 .widget-menu-content {
   min-width: 220px;
   padding: 6px;
-  border-color: #444149;
-  background: #242329;
-  color: #d9d5df;
+  border-color: var(--board-border-strong);
+  background: var(--board-surface-inset);
+  color: var(--board-text-soft);
   font: 11px/1.4 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
   box-shadow: 0 12px 30px #08080c88;
 }
@@ -37,18 +37,18 @@ const emit = defineEmits<{
   gap: 10px;
   border-radius: 3px;
   padding: 7px 9px;
-  color: #d9d5df;
+  color: var(--board-text-soft);
   font: inherit;
   text-align: left;
 }
 
 .widget-menu-content .widget-menu-item[data-highlighted] {
-  background: #35333c;
-  color: #ece9ee;
+  background: var(--board-highlight);
+  color: var(--board-text);
 }
 
 .widget-menu-content .widget-menu-item .btn-leading {
-  color: #d8c58f;
+  color: var(--board-accent);
   font-size: 15px;
 }
 
@@ -73,10 +73,10 @@ const emit = defineEmits<{
   width: 36px;
   height: 36px;
   padding: 0;
-  color: #aaa7b2;
+  color: var(--board-text-muted);
 }
 
 .widget-menu-trigger:hover:not(:disabled) {
-  color: #d8c58f;
+  color: var(--board-accent);
 }
 </style>

@@ -7,6 +7,9 @@ export default defineNuxtConfig({
   runtimeConfig: {
     youtubeApiKey: '',
     openrouterApiKey: '',
+    public: {
+      appVersion: process.env.NUXT_PUBLIC_APP_VERSION ?? 'dev',
+    },
   },
   colorMode: {
     preference: 'dark',

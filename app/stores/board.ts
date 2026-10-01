@@ -48,14 +48,87 @@ export const useBoardStore = defineStore('board', () => {
       const p = layout.find(p => p.i === w.id)
       return p ? { ...w, x: p.x, y: p.y, w: p.w, h: p.h } : w
     })
-    commit({ version: 1, widgets: next })
+    commit({ ...config.value, widgets: next })
   }
   function saveWidget(widget: BoardWidget) {
     const exists = widgets.value.some(w => w.id === widget.id)
     const next = exists ? widgets.value.map(w => w.id === widget.id ? widget : w) : [...widgets.value, { ...widget, x: 0, y: Math.max(0, ...widgets.value.map(w => w.y + w.h)) }]
-    return commit({ version: 1, widgets: next })
+    return commit({ ...config.value, widgets: next })
   }
-  function removeWidget(id: string) { commit({ version: 1, widgets: widgets.value.filter(w => w.id !== id) }) }
+  function removeWidget(id: string) { commit({ ...config.value, widgets: widgets.value.filter(w => w.id !== id) }) }
   function undo() { const previous = history.value.pop(); if (previous) { config.value = previous; persist() } }
-  return { activeDashboard, config, ready, message, history, widgets, init, setLayout, saveWidget, removeWidget, undo }
+  function resetDispositions() {
+    const dashboards: DashboardId[] = ['daily', 'tech', 'cinema']
+    try {
+      for (const dashboard of dashboards) {
+        const defaults = defaultDashboard(dashboard)
+        localStorage.setItem(dashboardStorageKey(dashboard), JSON.stringify(defaults))
+        if (dashboard === activeDashboard.value) config.value = defaults
+      }
+      history.value = []
+      message.value = ''
+      ready.value = true
+      return true
+    } catch {
+      message.value = 'Stockage indisponible : les tableaux n’ont pas été réinitialisés'
+      return false
+    }
+  }
+  function readAllDashboards(): Record<DashboardId, BoardConfig> {
+    const dashboards: DashboardId[] = ['daily', 'tech', 'cinema']
+    const result = {} as Record<DashboardId, BoardConfig>
+    for (const dashboard of dashboards) {
+      if (ready.value && activeDashboard.value === dashboard) {
+        result[dashboard] = config.value
+        continue
+      }
+      const raw = localStorage.getItem(dashboardStorageKey(dashboard))
+      if (!raw) {
+        result[dashboard] = defaultDashboard(dashboard)
+        continue
+      }
+      const parsed = parseBoard(JSON.parse(raw))
+      if (!parsed) throw new Error(`Configuration illisible pour le tableau ${dashboard}`)
+      result[dashboard] = upgradeDashboardDefaults(dashboard, parsed)
+    }
+    return result
+  }
+  function replaceAllDashboards(configurations: Record<DashboardId, BoardConfig>) {
+    const dashboards: DashboardId[] = ['daily', 'tech', 'cinema']
+    const parsed = {} as Record<DashboardId, BoardConfig>
+    for (const dashboard of dashboards) {
+      const board = parseBoard(configurations[dashboard])
+      if (!board) {
+        message.value = `Configuration invalide pour le tableau ${dashboard}`
+        return false
+      }
+      parsed[dashboard] = upgradeDashboardDefaults(dashboard, board)
+    }
+
+    const previous = new Map<string, string | null>()
+    try {
+      for (const dashboard of dashboards) {
+        const key = dashboardStorageKey(dashboard)
+        previous.set(key, localStorage.getItem(key))
+      }
+      for (const dashboard of dashboards) {
+        localStorage.setItem(dashboardStorageKey(dashboard), JSON.stringify(parsed[dashboard]))
+      }
+    } catch {
+      for (const [key, value] of previous) {
+        try {
+          if (value === null) localStorage.removeItem(key)
+          else localStorage.setItem(key, value)
+        } catch { /* Best-effort rollback if browser storage becomes unavailable. */ }
+      }
+      message.value = 'Stockage indisponible : la configuration n’a pas été importée'
+      return false
+    }
+
+    if (ready.value) config.value = parsed[activeDashboard.value]
+    history.value = []
+    message.value = ''
+    return true
+  }
+  return { activeDashboard, config, ready, message, history, widgets, init, setLayout, saveWidget, removeWidget, undo, resetDispositions, readAllDashboards, replaceAllDashboards }
 })

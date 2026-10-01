@@ -71,7 +71,7 @@ function initials(title: string) {
 </template>
 
 <style scoped>
-.apple-tv-widget { display: flex; height: 100%; min-height: 0; flex-direction: column; color: #e3e0e7; }
+.apple-tv-widget { display: flex; height: 100%; min-height: 0; flex-direction: column; color: var(--board-text); }
 .apple-tv-scroll { position: relative; min-height: 0; flex: 1; overflow: hidden; container-type: inline-size; }
 .apple-tv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 205px), 1fr)); align-content: start; gap: 20px 16px; list-style: none; margin: 0; padding: 16px 14px 20px; }
 .apple-tv-card { min-width: 0; animation: apple-tv-card-enter 340ms cubic-bezier(.2,.75,.25,1) both; animation-delay: calc(min(var(--card-index), 10) * 35ms); }
@@ -85,16 +85,16 @@ function initials(title: string) {
 .apple-tv-kind-badge { position: absolute; z-index: 1; top: 10px; left: 10px; max-width: calc(100% - 20px); overflow: hidden; padding: 5px 7px; border-radius: 3px; background: rgb(20 17 21 / 76%); color: #dedaf0; font: 9px/1.2 system-ui, sans-serif; letter-spacing: .07em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 .apple-tv-artwork-arrow { position: absolute; z-index: 1; right: 10px; bottom: 10px; display: grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; background: #c4b8ed; color: #211e27; font-size: 14px; opacity: 0; transform: translateY(3px); transition: opacity 160ms ease, transform 160ms ease; }
 .apple-tv-card-link:hover .apple-tv-artwork-arrow, .apple-tv-card-link:focus-visible .apple-tv-artwork-arrow { opacity: 1; transform: translateY(0); }
-.apple-tv-date { display: flex; min-width: 0; align-items: center; gap: 7px; color: #c4bddb; font: 10px/1.35 system-ui, sans-serif; letter-spacing: .055em; text-transform: uppercase; }
+.apple-tv-date { display: flex; min-width: 0; align-items: center; gap: 7px; color: var(--board-text-soft); font: 10px/1.35 system-ui, sans-serif; letter-spacing: .055em; text-transform: uppercase; }
 .apple-tv-date > span { flex: 0 0 auto; color: #c4b8ed; font-size: 12px; }
-.apple-tv-title { display: -webkit-box; overflow: hidden; color: #e3d3a0; font: 500 17px/1.2 Georgia, serif; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.apple-tv-card-link:hover .apple-tv-title { color: #eee6c6; }
-.apple-tv-card-link:focus-visible { border-radius: 9px; outline: 2px solid #e6cd84; outline-offset: 4px; }
+.apple-tv-title { display: -webkit-box; overflow: hidden; color: var(--board-accent-soft); font: 500 17px/1.2 Georgia, serif; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.apple-tv-card-link:hover .apple-tv-title { color: var(--board-accent-soft); }
+.apple-tv-card-link:focus-visible { border-radius: 9px; outline: 2px solid var(--board-accent-bright); outline-offset: 4px; }
 .apple-tv-measure { position: absolute; inset: 0 auto auto 0; width: 100%; visibility: hidden; pointer-events: none; }
-.apple-tv-state { margin: 0; padding: 24px 14px; color: #aaa7b2; font-size: 12px; }
-.apple-tv-state button { border: 0; background: transparent; color: #e4ce8b; font: inherit; cursor: pointer; }
-.apple-tv-footer { display: flex; flex: 0 0 auto; justify-content: space-between; gap: 12px; padding: 10px 14px 12px; color: #898691; font-size: 10px; }
-.apple-tv-footer a { color: #aaa7b2; text-decoration: none; }
+.apple-tv-state { margin: 0; padding: 24px 14px; color: var(--board-text-muted); font-size: 12px; }
+.apple-tv-state button { border: 0; background: transparent; color: var(--board-accent); font: inherit; cursor: pointer; }
+.apple-tv-footer { display: flex; flex: 0 0 auto; justify-content: space-between; gap: 12px; padding: 10px 14px 12px; color: var(--board-text-dim); font-size: 10px; }
+.apple-tv-footer a { color: var(--board-text-muted); text-decoration: none; }
 .apple-tv-footer a:hover { color: #c4b8ed; }
 .expanded { height: auto; min-height: 0; flex: 0 0 auto; }
 .expanded .apple-tv-scroll { min-height: 0; flex: 0 0 auto; overflow: visible; }

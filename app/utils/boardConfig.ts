@@ -6,6 +6,7 @@ export type WidgetKind = 'rss' | 'weather' | 'clock' | 'youtube' | 'github-trend
 export type GitHubTrendingPeriod = 'daily' | 'weekly' | 'monthly'
 export interface City { name: string; timezone: string }
 export type DashboardId = 'daily' | 'tech' | 'cinema'
+export const dashboardIds: DashboardId[] = ['daily', 'tech', 'cinema']
 export interface BoardWidget {
   id: string
   type: WidgetKind
@@ -25,7 +26,7 @@ export interface BoardWidget {
   /** @deprecated Read only: migrated to cinemaLocation by parseBoard. */
   cinemaArea?: LegacyCinemaAreaId
 }
-export interface BoardConfig { version: 1; widgets: BoardWidget[] }
+export interface BoardConfig { version: 1; widgets: BoardWidget[]; options?: Record<string, unknown> }
 export const boardStorageKey = 'encascade:board:v1'
 export function dashboardStorageKey(id: DashboardId) {
   return id === 'daily' ? boardStorageKey : `${boardStorageKey}:${id}`
@@ -126,6 +127,8 @@ export function defaultDashboard(id: DashboardId): BoardConfig {
 
 /** Upgrade only untouched Tech seeds from before the feed and trend defaults were added. */
 export function upgradeDashboardDefaults(id: DashboardId, board: BoardConfig): BoardConfig {
+  // Preserve explicit dashboard options even when the widget list matches an old seed.
+  if (board.options && Object.keys(board.options).length) return board
   if (id === 'cinema') {
     const previousSeed = { version: 1, widgets: [widgetDefaults('cinema', 'cinema-programme')] }
     const previousSeedWithTrailers = defaultDashboard('cinema').widgets.slice(0, 2)
@@ -178,6 +181,7 @@ export function parseBoard(value: unknown): BoardConfig | null {
   if (!value || typeof value !== 'object') return null
   const config = JSON.parse(JSON.stringify(value)) as BoardConfig
   if (config.version !== 1 || !Array.isArray(config.widgets)) return null
+  if (config.options !== undefined && (!config.options || typeof config.options !== 'object' || Array.isArray(config.options))) return null
   // Retire proprement les anciens widgets d’événements sans invalider le reste du tableau.
   config.widgets = config.widgets.filter(widget => !widget || typeof widget !== 'object' || (widget as { type?: unknown }).type !== 'cinema-events')
   if (config.widgets.length > 24) return null

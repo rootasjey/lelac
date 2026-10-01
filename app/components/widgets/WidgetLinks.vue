@@ -34,7 +34,7 @@ const props = defineProps<{
 }>()
 
 const defaultLinks: Link[] = [
-  { title: 'GitHub', url: 'https://github.com', color: '#f0f6fc' },
+  { title: 'GitHub', url: 'https://github.com', color: 'var(--board-text)' },
   { title: 'Twitter', url: 'https://twitter.com', color: '#1da1f2' },
   { title: 'YouTube', url: 'https://youtube.com', color: '#ff0000' },
   { title: 'Reddit', url: 'https://reddit.com', color: '#ff4500' },

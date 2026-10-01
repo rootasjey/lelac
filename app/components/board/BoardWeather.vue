@@ -32,11 +32,11 @@ const condition = computed(() => {
 p { margin: 0; }
 .weather-summary { display: flex; align-items: center; gap: 16px; margin-top: auto; }
 .weather-summary > div { min-width: 0; }
-.weather-summary span:not(.temperature) { display: block; margin-top: 6px; color: #aaa7b2; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.weather-summary span:not(.temperature) { display: block; margin-top: 6px; color: var(--board-text-muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .temperature { font-size: 42px; letter-spacing: -2px; }
-.feels, .stale { color: #aaa7b2; font-size: 11px; }
-footer { margin-top: auto; display: flex; gap: 12px; align-items: center; font-size: 10px; color: #aaa7b2; min-height: 44px; }
+.feels, .stale { color: var(--board-text-muted); font-size: 11px; }
+footer { margin-top: auto; display: flex; gap: 12px; align-items: center; font-size: 10px; color: var(--board-text-muted); min-height: 44px; }
 footer a { color: inherit; }
-button { background: transparent; color: #d8c58f; border: 0; cursor: pointer; min-width: 40px; min-height: 40px; }
-button:focus-visible { outline: 2px solid #d8c58f; }
+button { background: transparent; color: var(--board-accent); border: 0; cursor: pointer; min-width: 40px; min-height: 40px; }
+button:focus-visible { outline: 2px solid var(--board-accent); }
 </style>

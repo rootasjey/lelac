@@ -51,7 +51,7 @@ const dateLabel = (value: string) => new Intl.DateTimeFormat('fr-FR', { day: 'nu
 </template>
 
 <style scoped>
-.release-widget { position: relative; display: flex; height: 100%; min-height: 0; flex-direction: column; color: #e3e0e7; }
+.release-widget { position: relative; display: flex; height: 100%; min-height: 0; flex-direction: column; color: var(--board-text); }
 .release-scroll { position: relative; min-height: 0; flex: 1; overflow: hidden; container-type: inline-size; }
 .release-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 118px), 1fr)); align-content: start; gap: 18px 14px; list-style: none; margin: 0; padding: 12px 4px 18px; }
 .release-card { min-width: 0; animation: release-enter 320ms cubic-bezier(.2,.75,.25,1) both; animation-delay: calc(min(var(--card-index), 8) * 35ms); }
@@ -60,12 +60,12 @@ const dateLabel = (value: string) => new Intl.DateTimeFormat('fr-FR', { day: 'nu
 .release-poster img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .release-poster-fallback { display: grid; position: absolute; inset: 0; place-items: center; color: #898592; font-size: 26px; }
 .release-copy { padding: 9px 2px 0; }
-.release-date { display: flex; align-items: center; gap: 5px; margin: 0 0 5px; color: #e4ce8b; font-size: 10px; font-variant-numeric: tabular-nums; text-transform: uppercase; letter-spacing: .04em; }
-.release-card h3 { display: -webkit-box; overflow: hidden; margin: 0; color: #e3d3a0; font: 500 14px/1.25 Georgia, serif; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.release-meta { overflow: hidden; margin: 5px 0 0; color: #92909a; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
-.release-footer { flex: 0 0 auto; padding: 12px 12px 14px; color: #898691; font-size: 10px; }
-.release-state { margin: 0; padding: 24px 8px; color: #aaa7b2; font-size: 12px; }
-.release-state button { border: 0; background: transparent; color: #e4ce8b; font: inherit; cursor: pointer; }
+.release-date { display: flex; align-items: center; gap: 5px; margin: 0 0 5px; color: var(--board-accent); font-size: 10px; font-variant-numeric: tabular-nums; text-transform: uppercase; letter-spacing: .04em; }
+.release-card h3 { display: -webkit-box; overflow: hidden; margin: 0; color: var(--board-accent-soft); font: 500 14px/1.25 Georgia, serif; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.release-meta { overflow: hidden; margin: 5px 0 0; color: var(--board-text-muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.release-footer { flex: 0 0 auto; padding: 12px 12px 14px; color: var(--board-text-dim); font-size: 10px; }
+.release-state { margin: 0; padding: 24px 8px; color: var(--board-text-muted); font-size: 12px; }
+.release-state button { border: 0; background: transparent; color: var(--board-accent); font: inherit; cursor: pointer; }
 .expanded .release-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); gap: 24px 20px; padding: 4px; }
 .expanded { height: auto; min-height: 0; flex: 0 0 auto; }
 .expanded .release-scroll { min-height: 0; flex: 0 0 auto; overflow: visible; }

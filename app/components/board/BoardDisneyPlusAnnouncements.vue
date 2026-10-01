@@ -74,7 +74,7 @@ function initials(title: string) {
 </template>
 
 <style scoped>
-.disney-news-widget { display: flex; height: 100%; min-height: 0; flex-direction: column; color: #e3e0e7; }
+.disney-news-widget { display: flex; height: 100%; min-height: 0; flex-direction: column; color: var(--board-text); }
 .disney-news-scroll { position: relative; min-height: 0; flex: 1; overflow: hidden; container-type: inline-size; }
 .disney-news-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); align-content: start; gap: 22px 17px; list-style: none; margin: 0; padding: 16px 14px 20px; }
 .disney-news-card { min-width: 0; animation: disney-news-card-enter 340ms cubic-bezier(.2,.75,.25,1) both; animation-delay: calc(min(var(--card-index), 10) * 35ms); }
@@ -90,16 +90,16 @@ function initials(title: string) {
 .disney-news-link:hover .disney-news-arrow, .disney-news-link:focus-visible .disney-news-arrow { opacity: 1; transform: translateY(0); }
 .disney-news-date { display: flex; min-width: 0; align-items: center; gap: 6px; color: #abcaf1; font: 10px/1.35 system-ui, sans-serif; letter-spacing: .035em; }
 .disney-news-date > span { flex: 0 0 auto; color: #91bfff; font-size: 12px; }
-.disney-news-title { display: -webkit-box; overflow: hidden; color: #e3d3a0; font: 500 17px/1.2 Georgia, serif; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.disney-news-link:hover .disney-news-title { color: #eee6c6; }
-.disney-news-description { display: -webkit-box; overflow: hidden; color: #a9a6b1; font: 12px/1.45 system-ui, sans-serif; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
-.disney-news-description-empty { color: #898691; }
+.disney-news-title { display: -webkit-box; overflow: hidden; color: var(--board-accent-soft); font: 500 17px/1.2 Georgia, serif; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.disney-news-link:hover .disney-news-title { color: var(--board-accent-soft); }
+.disney-news-description { display: -webkit-box; overflow: hidden; color: var(--board-text-muted); font: 12px/1.45 system-ui, sans-serif; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.disney-news-description-empty { color: var(--board-text-dim); }
 .disney-news-link:focus-visible { border-radius: 9px; outline: 2px solid #91bfff; outline-offset: 4px; }
 .disney-news-measure { position: absolute; inset: 0 auto auto 0; width: 100%; visibility: hidden; pointer-events: none; }
-.disney-news-state { margin: 0; padding: 24px 14px; color: #aaa7b2; font-size: 12px; }
+.disney-news-state { margin: 0; padding: 24px 14px; color: var(--board-text-muted); font-size: 12px; }
 .disney-news-state button { border: 0; background: transparent; color: #c1d9fb; font: inherit; cursor: pointer; }
-.disney-news-footer { display: flex; flex: 0 0 auto; justify-content: space-between; gap: 12px; padding: 10px 14px 12px; color: #898691; font-size: 10px; }
-.disney-news-footer a { color: #aaa7b2; text-decoration: none; }
+.disney-news-footer { display: flex; flex: 0 0 auto; justify-content: space-between; gap: 12px; padding: 10px 14px 12px; color: var(--board-text-dim); font-size: 10px; }
+.disney-news-footer a { color: var(--board-text-muted); text-decoration: none; }
 .disney-news-footer a:hover { color: #a9cbfb; }
 .expanded { height: auto; min-height: 0; flex: 0 0 auto; }
 .expanded .disney-news-scroll { min-height: 0; flex: 0 0 auto; overflow: visible; }

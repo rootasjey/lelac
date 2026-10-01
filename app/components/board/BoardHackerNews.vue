@@ -53,25 +53,25 @@ function retry() { void refresh() }
 .hacker-news { height: 100%; min-height: 0; display: flex; flex-direction: column; }
 .hacker-news-body { flex: 1; min-height: 0; overflow: hidden; }
 .story-list { list-style: none; margin: 0; padding: 0; }
-.story-list li { display: flex; align-items: stretch; gap: 14px; min-width: 0; padding: 12px 0; border-bottom: 1px solid #29292e; }
+.story-list li { display: flex; align-items: stretch; gap: 14px; min-width: 0; padding: 12px 0; border-bottom: 1px solid var(--board-hover-strong); }
 .story-list li:last-child { border-bottom: 0; }
-.story-index { display: flex; flex: 0 0 32px; align-items: center; color: #aaa7b2; font-size: 18px; font-weight: 500; letter-spacing: .04em; line-height: 1; }
+.story-index { display: flex; flex: 0 0 32px; align-items: center; color: var(--board-text-muted); font-size: 18px; font-weight: 500; letter-spacing: .04em; line-height: 1; }
 .story-copy { min-width: 0; overflow: hidden; }
-h3 { display: -webkit-box; overflow: hidden; margin: 0; color: #d8c58f; font-size: 14px; font-weight: 500; line-height: 20px; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+h3 { display: -webkit-box; overflow: hidden; margin: 0; color: var(--board-accent); font-size: 14px; font-weight: 500; line-height: 20px; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 h3 a { color: inherit; text-decoration: none; }
 h3 a:hover { text-decoration: underline; }
-h3 a:focus-visible { outline: 2px solid #d8c58f; outline-offset: 2px; }
-.story-meta { overflow: hidden; margin: 4px 0 0; color: #85838d; font-size: 10px; line-height: 14px; text-overflow: ellipsis; white-space: nowrap; }
-.feed-state { margin: 0; padding: 18px 0; color: #aaa7b2; font-size: 11px; line-height: 1.6; }
+h3 a:focus-visible { outline: 2px solid var(--board-accent); outline-offset: 2px; }
+.story-meta { overflow: hidden; margin: 4px 0 0; color: var(--board-text-dim); font-size: 10px; line-height: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.feed-state { margin: 0; padding: 18px 0; color: var(--board-text-muted); font-size: 11px; line-height: 1.6; }
 .feed-state[role='alert'] { color: #e6a19c; }
-.feed-state button { min-height: 40px; margin-left: 4px; border: 0; background: none; color: #d8c58f; font: inherit; cursor: pointer; }
-.stale { flex: 0 0 auto; margin: 0; padding: 4px 0; color: #d8c58f; font-size: 10px; }
-footer { display: flex; flex: 0 0 44px; align-items: center; justify-content: space-between; border-top: 1px solid #29292e; }
-.more-button { min-height: 40px; border: 0; background: none; color: #aaa7b2; cursor: pointer; font: inherit; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
-.more-button:hover:not(:disabled) { color: #d8c58f; }
-.more-button:disabled { color: #96939c; cursor: default; }
-.more-button:focus-visible { outline: 2px solid #d8c58f; outline-offset: 2px; }
-.more-arrow { margin-left: 4px; color: #d8c58f; }
+.feed-state button { min-height: 40px; margin-left: 4px; border: 0; background: none; color: var(--board-accent); font: inherit; cursor: pointer; }
+.stale { flex: 0 0 auto; margin: 0; padding: 4px 0; color: var(--board-accent); font-size: 10px; }
+footer { display: flex; flex: 0 0 44px; align-items: center; justify-content: space-between; border-top: 1px solid var(--board-hover-strong); }
+.more-button { min-height: 40px; border: 0; background: none; color: var(--board-text-muted); cursor: pointer; font: inherit; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.more-button:hover:not(:disabled) { color: var(--board-accent); }
+.more-button:disabled { color: var(--board-text-muted); cursor: default; }
+.more-button:focus-visible { outline: 2px solid var(--board-accent); outline-offset: 2px; }
+.more-arrow { margin-left: 4px; color: var(--board-accent); }
 .expanded { height: auto; }
 .expanded .hacker-news-body { overflow: visible; }
 .expanded footer { display: none; }

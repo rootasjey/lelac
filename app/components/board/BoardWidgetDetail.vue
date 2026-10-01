@@ -53,14 +53,14 @@ const eyebrow = computed(() => {
 </script>
 
 <style scoped>
-.widget-detail { display: flex; width: 100%; height: 100%; min-height: 0; flex-direction: column; color: #e3e0e7; }
-.widget-detail-header { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 24px; padding: 22px 30px; border-bottom: 1px solid #303036; }
+.widget-detail { display: flex; width: 100%; height: 100%; min-height: 0; flex-direction: column; color: var(--board-text); }
+.widget-detail-header { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 24px; padding: 22px 30px; border-bottom: 1px solid var(--board-border); }
 .widget-detail-heading { min-width: 0; }
 .widget-detail-eyebrow { margin: 0 0 8px; color: #b0a5a0; font: 10px/1.3 system-ui, sans-serif; letter-spacing: 1.3px; }
-.widget-detail-title { display: block; margin: 0; color: #e3e0e7; font: 26px/1.2 system-ui, sans-serif; letter-spacing: -.03em; }
+.widget-detail-title { display: block; margin: 0; color: var(--board-text); font: 26px/1.2 system-ui, sans-serif; letter-spacing: -.03em; }
 .widget-detail-scroll { min-height: 0; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 22px 30px 32px; }
 .openrouter-detail .widget-detail-header { padding-bottom: 16px; border-bottom: 0; }
 .openrouter-detail-scroll { padding-top: 0; }
-.openrouter-catalog-link { display: inline-block; margin-top: 8px; color: #d8c58f; font: 12px/1.4 system-ui, sans-serif; }
+.openrouter-catalog-link { display: inline-block; margin-top: 8px; color: var(--board-accent); font: 12px/1.4 system-ui, sans-serif; }
 @media (max-width: 767px) { .widget-detail-header { gap: 12px; padding: 18px 18px; } .widget-detail-title { font-size: 22px; } .widget-detail-scroll { padding: 18px 18px 24px; } }
 </style>

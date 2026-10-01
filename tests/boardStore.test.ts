@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useBoardStore } from '../app/stores/board'
-import { dashboardStorageKey, widgetDefaults } from '../app/utils/boardConfig'
+import { dashboardStorageKey, defaultDashboard, widgetDefaults } from '../app/utils/boardConfig'
 
 const storage = new Map<string, string>()
 
@@ -10,6 +10,7 @@ beforeEach(() => {
     getItem: (key: string) => storage.get(key) ?? null,
     setItem: (key: string, value: string) => storage.set(key, String(value)),
     removeItem: (key: string) => storage.delete(key),
+    clear: () => storage.clear(),
   })
 })
 
@@ -32,6 +33,7 @@ describe('board undo', () => {
     store.undo()
     expect(store.config).toEqual(before)
   })
+
   it('adds at the bottom and reverses additions and setting changes', () => {
     setActivePinia(createPinia())
     const store = useBoardStore()
@@ -78,5 +80,50 @@ describe('board undo', () => {
     expect(store.activeDashboard).toBe('daily')
     expect(store.widgets.some(widget => widget.title === 'Lecture quotidienne')).toBe(true)
     expect(localStorage.getItem(dashboardStorageKey('daily'))).toBe(dailySnapshot)
+  })
+
+  it('restores all three dashboard layouts and refreshes the active board', () => {
+    setActivePinia(createPinia())
+    const store = useBoardStore()
+    store.init('daily')
+    store.removeWidget('news')
+    store.init('tech')
+    store.removeWidget('google-developers')
+    store.init('cinema')
+    store.removeWidget('cinema-programme')
+
+    expect(store.resetDispositions()).toBe(true)
+    expect(store.widgets).toEqual(defaultDashboard('cinema').widgets)
+    for (const dashboard of ['daily', 'tech', 'cinema'] as const) {
+      expect(JSON.parse(localStorage.getItem(dashboardStorageKey(dashboard))!)).toEqual(defaultDashboard(dashboard))
+    }
+    expect(store.history).toEqual([])
+  })
+
+  it('exports every saved dashboard and replaces them together on import', () => {
+    setActivePinia(createPinia())
+    const store = useBoardStore()
+    store.init('daily')
+    store.saveWidget({ ...widgetDefaults('rss', 'extra-feed'), title: 'Extra', feedUrl: 'https://example.org/feed.xml', y: 10 })
+    store.init('cinema')
+    store.removeWidget('cinema-trailers')
+
+    const exported = store.readAllDashboards()
+    expect(exported.daily.widgets.some(widget => widget.id === 'extra-feed')).toBe(true)
+    expect(exported.cinema.widgets.some(widget => widget.id === 'cinema-trailers')).toBe(false)
+
+    const replacement = {
+      daily: defaultDashboard('daily'),
+      tech: defaultDashboard('tech'),
+      cinema: { ...defaultDashboard('cinema'), options: { showTrailers: false } },
+    }
+    expect(store.replaceAllDashboards(replacement)).toBe(true)
+    expect(store.config).toEqual(replacement.cinema)
+    expect(JSON.parse(localStorage.getItem(dashboardStorageKey('daily'))!)).toEqual(replacement.daily)
+    expect(JSON.parse(localStorage.getItem(dashboardStorageKey('tech'))!)).toEqual(replacement.tech)
+    expect(JSON.parse(localStorage.getItem(dashboardStorageKey('cinema'))!)).toEqual(replacement.cinema)
+
+    store.saveWidget({ ...store.widgets[0]!, title: 'Cinéma personnalisé' })
+    expect(store.config.options).toEqual({ showTrailers: false })
   })
 })
