@@ -1,15 +1,16 @@
 import { normalizeOpenRouterModels, normalizeOpenRouterThroughput, type OpenRouterModelsResult } from '../../../shared/utils/openrouterModels'
+import { setResponseHeader } from 'h3'
 
 const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models?sort=newest&limit=60'
 const FETCH_TIMEOUT_MS = 12_000
 
-export default defineCachedEventHandler(async (event) => {
+const cachedHandler = defineCachedEventHandler(async (event) => {
   try {
     const response = await fetch(OPENROUTER_MODELS_URL, {
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       headers: {
         Accept: 'application/json',
-        'User-Agent': 'Encascade OpenRouter models widget',
+        'User-Agent': 'Trame OpenRouter models widget',
       },
     })
     if (!response.ok) throw new Error(`OpenRouter responded with status ${response.status}`)
@@ -32,7 +33,7 @@ export default defineCachedEventHandler(async (event) => {
             headers: {
               Accept: 'application/json',
               Authorization: `Bearer ${apiKey}`,
-              'User-Agent': 'Encascade OpenRouter models widget',
+              'User-Agent': 'Trame OpenRouter models widget',
             },
           })
           if (!endpointResponse.ok) return [model.id, null] as const
@@ -63,5 +64,16 @@ export default defineCachedEventHandler(async (event) => {
   // Invalidate the earlier catalog cache that did not include endpoint metrics.
   getKey: () => 'openrouter-models-v2',
   maxAge: 900,
-  swr: true,
+  // Do not serve stale catalog data indefinitely when an upstream refresh fails.
+  swr: false,
+})
+
+export default defineEventHandler(async (event) => {
+  try {
+    return await cachedHandler(event)
+  } finally {
+    // Nitro's internal 15-minute cache is intentional; HTTP/CDN caches are not.
+    // In particular, do not let a stale-while-revalidate response outlive it.
+    setResponseHeader(event, 'Cache-Control', 'no-store')
+  }
 })
