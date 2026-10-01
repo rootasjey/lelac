@@ -15,7 +15,7 @@ export default defineNuxtConfig({
     preference: 'dark',
     fallback: 'dark',
     classSuffix: '',
-    storageKey: 'encascade-color-mode',
+    storageKey: 'trame-color-mode',
   },
 
   components: [
@@ -26,9 +26,9 @@ export default defineNuxtConfig({
   
   app: {
     head: {
-      title: 'Encascade',
+      title: 'Trame',
       meta: [
-        { name: 'description', content: 'Vos sources, organisées en tableaux personnalisables' },
+        { name: 'description', content: 'Composez votre quotidien en réunissant actualités, vidéos et informations dans des tableaux personnalisés.' },
       ],
     },
   },

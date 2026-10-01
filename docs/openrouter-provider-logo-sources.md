@@ -1,6 +1,6 @@
 # OpenRouter provider logo assets
 
-These local assets mirror the provider icons shown in OpenRouter's model catalog, checked on 2026-09-22. Some are hosted by OpenRouter; others are Google-served favicons that OpenRouter displays. They are used only to identify model providers in Encascade. Provider names and marks belong to their respective owners.
+These local assets mirror the provider icons shown in OpenRouter's model catalog, checked on 2026-09-22. Some are hosted by OpenRouter; others are Google-served favicons that OpenRouter displays. They are used only to identify model providers in Trame. Provider names and marks belong to their respective owners.
 
 | Local file | Provider ID | Source |
 | --- | --- | --- |

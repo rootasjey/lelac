@@ -1,12 +1,14 @@
-# Encascade
+# Trame
+
+> Composez votre quotidien
 
 Personal dashboards for your interests, composed and edited visually. Built with Nuxt, Vue, UnaUI and UnoCSS, inspired by [Glance](https://github.com/glanceapp/glance).
 
 ## Product direction
 
-Encascade brings news, videos and everyday information into calm, readable dashboards. Its main argument is visual editing: add a source, configure its widget and rearrange the page directly in the app. Deployment to your own Cloudflare Workers account is the second core goal.
+Trame brings news, videos and everyday information into calm, readable dashboards. Its main argument is visual editing: add a source, configure its widget and rearrange the page directly in the app. Deployment to your own Cloudflare Workers account is the second core goal.
 
-Glance is the visual reference for composition, spacing, typography and restrained color. Encascade accepts additional JavaScript and runtime overhead in exchange for a better editing experience. Responsiveness and sensible resource usage still matter; matching Glance's binary size or performance is not a release requirement.
+Glance is the visual reference for composition, spacing, typography and restrained color. Trame accepts additional JavaScript and runtime overhead in exchange for a better editing experience. Responsiveness and sensible resource usage still matter; matching Glance's binary size or performance is not a release requirement.
 
 ## Initial scope
 
@@ -41,7 +43,7 @@ The first polished dashboard should establish the design with RSS, weather and w
 
 ### Drag-and-drop approach
 
-Use a Vue package for pointer interactions and build Encascade's editing UI around it. Do not implement a custom drag engine.
+Use a Vue package for pointer interactions and build Trame's editing UI around it. Do not implement a custom drag engine.
 
 The main dashboard now uses `grid-layout-plus` pinned to `2.0.0-beta.0`, with a 12-column layout and fixed user-selected heights. Keep grid configuration objects stable during interactions. The earlier `vue-draggable-plus` components remain unused by the main route.
 
@@ -63,7 +65,7 @@ The first deployment is for personal use. Protect configuration writes before ex
 
 The `/` route opens Quotidien; the Tech tab opens a separate dashboard seeded with the Google Developers YouTube channel, GitHub Blog and Cloudflare Workers AI changelog RSS feeds, plus separate GitHub Trending repository and developer widgets. Hacker News is available in the widget catalogue but is not forced into the default Tech layout. An untouched older Tech seed is upgraded with those widgets; customized Tech boards are preserved. Each GitHub trend widget has independent period and language settings. Both boards support adding, configuring, moving, resizing and removing RSS, weather, world-clock, YouTube, GitHub Trending and Hacker News widgets. Undo covers layout, settings, additions and deletions within the current session. A cancelled addition leaves no provisional widget.
 
-- Quotidien keeps its configuration under `encascade:board:v1`; Tech uses `encascade:board:v1:tech`. Legacy `distill-config` and earlier demonstration layouts are not migrated.
+- Quotidien keeps its configuration under `trame:board:v1`; Tech uses `trame:board:v1:tech`. Legacy `distill-config` and earlier demonstration layouts are not migrated.
 - Desktop supports drag/resize and keyboard-accessible adjustment controls. Mobile stacks widgets in desktop reading order and supports adding, configuring and removing widgets. Geometry editing remains desktop-only.
 - RSS and Atom feeds are fetched and parsed directly by the server from public HTTPS URLs; redirects are checked, responses are limited to 2 MiB and 12 seconds, and results are cached for 5 minutes. No conversion service or API key is required. Articles link to their original sources.
 - YouTube channel feeds use the official YouTube Data API through a server endpoint. Set `NUXT_YOUTUBE_API_KEY` in a local `.env` file for `bun run dev`, or as a Cloudflare Worker secret for deployment. The key never reaches the browser; recent video metadata is cached for 15 minutes.

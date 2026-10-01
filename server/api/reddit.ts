@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
       {
         signal: controller.signal,
         headers: {
-          'User-Agent': 'Distill/1.0 (dashboard app; contact@distill.app)',
+          'User-Agent': 'Trame/1.0 (dashboard app)',
           'Accept': 'application/json',
         },
       }

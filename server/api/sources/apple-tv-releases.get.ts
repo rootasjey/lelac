@@ -8,7 +8,7 @@ export default defineCachedEventHandler(async (): Promise<AppleTvReleasesResult>
       signal: AbortSignal.timeout(10_000),
       headers: {
         Accept: 'application/json',
-        'User-Agent': 'Encascade streaming calendar widget (Apple TV Press titles and source links)',
+        'User-Agent': 'Trame streaming calendar widget (Apple TV Press titles and source links)',
       },
     })
     if (!response.ok) throw new Error(`Apple TV Press returned HTTP ${response.status}`)

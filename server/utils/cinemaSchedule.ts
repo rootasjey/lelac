@@ -26,7 +26,7 @@ export const fetchNationalCinemaSchedule = defineCachedFunction(async (): Promis
     const response: CinemaApiResponse = await $fetch<CinemaApiResponse>(nextPage, {
       timeout: 12_000,
       retry: 0,
-      headers: { Accept: 'application/json', 'User-Agent': 'Encascade cinema schedule widget' },
+      headers: { Accept: 'application/json', 'User-Agent': 'Trame cinema schedule widget' },
     })
     if (response.total !== undefined) {
       if (expectedTotal !== undefined && expectedTotal !== response.total) throw new Error('SCARE result count changed during pagination.')

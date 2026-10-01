@@ -7,7 +7,7 @@ const STORY_LIMIT = 20
 async function fetchJson<T>(url: string): Promise<T> {
   const response = await fetch(url, {
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    headers: { Accept: 'application/json', 'User-Agent': 'Encascade Hacker News widget' },
+    headers: { Accept: 'application/json', 'User-Agent': 'Trame Hacker News widget' },
   })
   if (!response.ok) throw new Error(`Hacker News responded with status ${response.status}`)
   return await response.json() as T

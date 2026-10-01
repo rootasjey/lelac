@@ -8,7 +8,7 @@ export default defineCachedEventHandler(async (): Promise<NetflixReleasesResult>
       signal: AbortSignal.timeout(10_000),
       headers: {
         Accept: 'text/html,application/xhtml+xml',
-        'User-Agent': 'Encascade streaming calendar widget (metadata and source links)',
+        'User-Agent': 'Trame streaming calendar widget (metadata and source links)',
       },
     })
     if (!response.ok) throw new Error(`Netflix returned HTTP ${response.status}`)
@@ -22,7 +22,7 @@ export default defineCachedEventHandler(async (): Promise<NetflixReleasesResult>
           signal: AbortSignal.timeout(3_500),
           headers: {
             Accept: 'text/html,application/xhtml+xml',
-            'User-Agent': 'Encascade streaming calendar widget (official Netflix artwork links)',
+            'User-Agent': 'Trame streaming calendar widget (official Netflix artwork links)',
           },
         })
         if (!titlePage.ok) return release

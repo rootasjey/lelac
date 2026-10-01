@@ -26,7 +26,7 @@ const returnToBoard = computed(() => {
   return board === 'daily' ? '/' : `/?board=${board}`
 })
 
-useHead({ title: 'Paramètres — Encascade' })
+useHead({ title: 'Paramètres — Trame' })
 
 watch(showResetConfirmation, async (show) => {
   await nextTick()
@@ -66,7 +66,7 @@ function exportConfiguration() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `encascade-configuration-${new Date().toISOString().slice(0, 10)}.json`
+    link.download = `trame-configuration-${new Date().toISOString().slice(0, 10)}.json`
     link.click()
     window.setTimeout(() => URL.revokeObjectURL(url), 0)
     transferMessage.value = 'Configuration exportée.'
@@ -113,7 +113,7 @@ function importConfiguration() {
   <main class="settings-page">
     <div class="settings-shell">
       <header class="settings-header">
-        <NuxtLink to="/" class="settings-brand">encascade<span>↘</span></NuxtLink>
+        <NuxtLink to="/" class="settings-brand">Trame<span>↘</span></NuxtLink>
         <NuxtLink :to="returnToBoard" class="settings-back"><span class="i-ph-arrow-left" aria-hidden="true" />Retour au tableau</NuxtLink>
       </header>
 
@@ -171,7 +171,7 @@ function importConfiguration() {
           </div>
           <div class="setting-row transfer-row">
             <div class="setting-copy">
-              <h3>Configuration Encascade</h3>
+              <h3>Configuration Trame</h3>
               <p>Inclut le thème, les widgets et les réglages de vos {{ dashboardIds.length }} tableaux.</p>
             </div>
             <div class="transfer-actions">

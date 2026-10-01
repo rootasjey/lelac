@@ -106,7 +106,7 @@ export async function resolveYoutubeChannelId(input: string, apiKey?: string): P
       headers: {
         Accept: 'text/html,application/xhtml+xml',
         'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
-        'User-Agent': 'Encascade channel resolver',
+        'User-Agent': 'Trame channel resolver',
       },
     })
 

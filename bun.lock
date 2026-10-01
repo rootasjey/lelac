@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "encascade",
+      "name": "trame",
       "dependencies": {
         "@iconify-json/openmoji": "^1.2.27",
         "@iconify-json/ph": "^1.2.2",

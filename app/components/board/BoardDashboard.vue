@@ -2,7 +2,10 @@
   <main class="dashboard" :class="{ 'grid-interacting': gridInteracting }">
     <div class="board-shell">
       <header class="board-header">
-        <NuxtLink to="/" class="brand">encascade<span>↘</span></NuxtLink>
+        <NuxtLink to="/" class="brand">
+          <span class="brand-wordmark">Trame<span aria-hidden="true">↘</span></span>
+          <span class="brand-tagline">Composez votre quotidien</span>
+        </NuxtLink>
         <nav class="dashboard-tabs" aria-label="Tableaux">
           <NuxtLink to="/" class="board-tab" :class="{ active: dashboardId === 'daily' }" :aria-current="dashboardId === 'daily' ? 'page' : undefined">Quotidien</NuxtLink>
           <NuxtLink to="/?board=tech" class="board-tab" :class="{ active: dashboardId === 'tech' }" :aria-current="dashboardId === 'tech' ? 'page' : undefined">Tech</NuxtLink>
@@ -289,8 +292,10 @@ function setYoutubeAvailability(id: string, available: boolean) {
 .dashboard { --una-primary: 81% .11 90; --una-primary-foreground: 18% .02 90; background: var(--board-canvas); color: var(--board-text); min-height: 100vh; font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace; font-size: 13px; }
 .board-shell { max-width: 1440px; margin: auto; padding: 24px 32px 104px; }
 .board-header { display: flex; align-items: center; gap: 36px; min-height: 62px; border-bottom: 1px solid var(--board-border); }
-.brand { color: var(--board-text); font-size: 20px; letter-spacing: -1px; text-decoration: none; }
-.brand span { margin-left: 8px; color: var(--board-accent); }
+.brand { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; color: var(--board-text); text-decoration: none; }
+.brand-wordmark { font-size: 20px; letter-spacing: -1px; line-height: 1; }
+.brand-wordmark span { margin-left: 8px; color: var(--board-accent); }
+.brand-tagline { color: var(--board-text-soft); font-size: 10px; line-height: 1.2; }
 .dashboard-tabs { align-self: stretch; display: flex; align-items: stretch; gap: 24px; }
 .board-tab { display: flex; align-items: center; border-bottom: 2px solid transparent; color: var(--board-text-dim); text-decoration: none; transition: color 140ms ease, border-color 140ms ease; }
 .board-tab:hover, .board-tab.active { color: var(--board-text); }
@@ -386,7 +391,7 @@ select { background: var(--board-surface-inset); border: 1px solid var(--board-b
 .dialog-footer { display: flex; justify-content: flex-end; margin-top: 24px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
-@media (max-width: 767px), (max-width: 900px) and (max-height: 500px) { .board-shell { padding: 12px 16px 128px; } .board-header { gap: 16px; flex-wrap: wrap; padding-bottom: 0; } .brand { font-size: 18px; } .dashboard-tabs { order: 1; width: 100%; height: 40px; gap: 24px; } .board-status { min-height: 38px; } .board-control-dock { bottom: calc(40px + env(safe-area-inset-bottom, 0px)); } }
+@media (max-width: 767px), (max-width: 900px) and (max-height: 500px) { .board-shell { padding: 12px 16px 128px; } .board-header { gap: 16px; flex-wrap: wrap; padding-bottom: 0; } .brand-wordmark { font-size: 18px; } .dashboard-tabs { order: 1; width: 100%; height: 40px; gap: 24px; } .board-status { min-height: 38px; } .board-control-dock { bottom: calc(40px + env(safe-area-inset-bottom, 0px)); } }
 @media (prefers-reduced-motion: reduce) { .board-control-dock { transition: none; } }
 @media (prefers-reduced-motion: reduce) { :global(.widget-detail-dialog-overlay[data-state]), :global(.widget-detail-dialog-content[data-state]) { animation: none; } }
 .empty-board { padding: 48px 24px; text-align: center; border: 1px dashed var(--board-border-strong); }

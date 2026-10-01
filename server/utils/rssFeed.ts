@@ -60,7 +60,7 @@ export async function fetchPublicFeed(input: string) {
       signal,
       headers: {
         Accept: ACCEPTED_FEED_TYPES,
-        'User-Agent': 'Encascade RSS reader',
+        'User-Agent': 'Trame RSS reader',
       },
     })
 
