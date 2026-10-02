@@ -1,10 +1,22 @@
 import { defineStore } from 'pinia'
 import type { ReadonlyLayout } from 'grid-layout-plus'
-import { dashboardStorageKey, defaultDashboard, parseBoard, upgradeDashboardDefaults } from '~/utils/boardConfig'
-import type { BoardConfig, BoardWidget, DashboardId } from '~/utils/boardConfig'
+import {
+  dashboardIds,
+  dashboardListStorageKey,
+  dashboardStorageOwnerKey,
+  dashboardStorageKey,
+  defaultDashboard,
+  defaultDashboardDefinitions,
+  parseBoard,
+  parseDashboardDefinitions,
+  shouldDiscardForeignDashboardCache,
+  upgradeDashboardDefaults,
+} from '~/utils/boardConfig'
+import type { BoardConfig, BoardWidget, DashboardBackup, DashboardDefinition, DashboardId } from '~/utils/boardConfig'
 
 export const useBoardStore = defineStore('board', () => {
   const activeDashboard = ref<DashboardId>('daily')
+  const dashboards = ref<DashboardDefinition[]>(defaultDashboardDefinitions.map(item => ({ ...item })))
   const config = ref<BoardConfig>(defaultDashboard('daily'))
   const ready = ref(false)
   const message = ref('')
@@ -13,53 +25,96 @@ export const useBoardStore = defineStore('board', () => {
   const syncedUserId = ref('')
   const widgets = computed(() => config.value.widgets)
   let remoteSaveTimer: ReturnType<typeof setTimeout> | undefined
+  let dashboardListLoaded = false
+  let remoteWriteQueue = Promise.resolve()
+
+  function orderedDashboards() {
+    return [...dashboards.value].sort((a, b) => a.order - b.order)
+  }
+
+  function loadDashboardList() {
+    if (dashboardListLoaded || typeof localStorage === 'undefined') return
+    dashboardListLoaded = true
+    try {
+      const raw = localStorage.getItem(dashboardListStorageKey)
+      if (!raw) return
+      const parsed = parseDashboardDefinitions(JSON.parse(raw))
+      if (parsed) dashboards.value = parsed
+      else message.value = 'Liste de tableaux invalide : les tableaux de départ ont été chargés'
+    } catch {
+      message.value = 'Liste de tableaux illisible : les tableaux de départ ont été chargés'
+    }
+  }
+
+  function writeDashboardList() {
+    try {
+      localStorage.setItem(dashboardListStorageKey, JSON.stringify(orderedDashboards()))
+      dashboardListLoaded = true
+      return true
+    } catch {
+      message.value = 'Stockage indisponible : les tableaux ne sont pas enregistrés'
+      return false
+    }
+  }
 
   function queueRemoteSave() {
     if (!remoteEnabled.value || !syncedUserId.value || typeof window === 'undefined') return
     if (remoteSaveTimer) clearTimeout(remoteSaveTimer)
+    const dashboardId = activeDashboard.value
+    const dashboardConfig = JSON.parse(JSON.stringify(config.value)) as BoardConfig
     remoteSaveTimer = setTimeout(async () => {
-      try {
-        await $fetch(`/api/boards/${activeDashboard.value}`, { method: 'PUT', body: config.value })
+      remoteWriteQueue = remoteWriteQueue.then(async () => {
+        await $fetch(`/api/boards/${encodeURIComponent(dashboardId)}`, { method: 'PUT', body: dashboardConfig })
         if (message.value.startsWith('Synchronisation')) message.value = ''
-      } catch {
+      }).catch(() => {
         message.value = 'Synchronisation impossible : vos modifications restent enregistrées dans ce navigateur'
-      }
+      })
+      await remoteWriteQueue
     }, 450)
   }
 
   async function queueRemoteSaveAll(configurations = readAllDashboards()) {
     if (!remoteEnabled.value || !syncedUserId.value) return
-    try {
-      await $fetch('/api/boards', { method: 'PUT', body: { dashboards: configurations } })
+    if (remoteSaveTimer) clearTimeout(remoteSaveTimer)
+    const snapshot = JSON.parse(JSON.stringify(configurations)) as DashboardBackup[]
+    remoteWriteQueue = remoteWriteQueue.then(async () => {
+      await $fetch('/api/boards', { method: 'PUT', body: { dashboards: snapshot } })
       if (message.value.startsWith('Synchronisation')) message.value = ''
-    } catch {
+    }).catch(() => {
       message.value = 'Synchronisation impossible : vos modifications restent enregistrées dans ce navigateur'
-    }
+    })
+    await remoteWriteQueue
   }
 
   function persist() {
-    try { localStorage.setItem(dashboardStorageKey(activeDashboard.value), JSON.stringify(config.value)); if (!message.value.startsWith('Synchronisation')) message.value = '' }
-    catch { message.value = 'Stockage indisponible : les modifications ne sont pas enregistrées' }
+    try {
+      localStorage.setItem(dashboardStorageKey(activeDashboard.value), JSON.stringify(config.value))
+      if (!message.value.startsWith('Synchronisation')) message.value = ''
+    } catch { message.value = 'Stockage indisponible : les modifications ne sont pas enregistrées' }
     queueRemoteSave()
   }
-  function init(dashboard: DashboardId = 'daily') {
-    if (ready.value && activeDashboard.value === dashboard) return
-    activeDashboard.value = dashboard
-    config.value = defaultDashboard(dashboard)
+
+  function init(dashboard?: DashboardId) {
+    loadDashboardList()
+    const selected = (dashboard ? dashboards.value.find(item => item.id === dashboard) : undefined) ?? orderedDashboards()[0]
+    const id = selected?.id ?? 'daily'
+    if (ready.value && activeDashboard.value === id) return
+    activeDashboard.value = id
+    config.value = defaultDashboard(id)
     history.value = []
     message.value = ''
     try {
-      const raw = localStorage.getItem(dashboardStorageKey(dashboard))
+      const raw = localStorage.getItem(dashboardStorageKey(id))
       if (raw) {
         const parsed = parseBoard(JSON.parse(raw))
         if (!parsed) throw new Error('Invalid configuration')
-        config.value = upgradeDashboardDefaults(dashboard, parsed)
+        config.value = dashboardIds.includes(id) ? upgradeDashboardDefaults(id, parsed) : parsed
         if (JSON.stringify(config.value) !== raw) persist()
-        message.value = ''
       } else persist()
     } catch { message.value = 'Configuration illisible : un tableau initial a été chargé' }
     ready.value = true
   }
+
   function commit(next: BoardConfig) {
     const parsed = parseBoard(next)
     if (!parsed) { message.value = 'Modification refusée : configuration invalide'; return false }
@@ -70,6 +125,7 @@ export const useBoardStore = defineStore('board', () => {
     persist()
     return true
   }
+
   function setLayout(layout: ReadonlyLayout) {
     if (layout.length !== widgets.value.length || new Set(layout.map(p => p.i)).size !== widgets.value.length) return
     const next = widgets.value.map(w => {
@@ -78,86 +134,159 @@ export const useBoardStore = defineStore('board', () => {
     })
     commit({ ...config.value, widgets: next })
   }
+
   function saveWidget(widget: BoardWidget) {
     const exists = widgets.value.some(w => w.id === widget.id)
     const next = exists ? widgets.value.map(w => w.id === widget.id ? widget : w) : [...widgets.value, { ...widget, x: 0, y: Math.max(0, ...widgets.value.map(w => w.y + w.h)) }]
     return commit({ ...config.value, widgets: next })
   }
+
   function removeWidget(id: string) { commit({ ...config.value, widgets: widgets.value.filter(w => w.id !== id) }) }
   function undo() { const previous = history.value.pop(); if (previous) { config.value = previous; persist() } }
-  function resetDispositions() {
-    const dashboards: DashboardId[] = ['daily', 'tech', 'cinema']
+
+  function writeCollection(nextDashboards: DashboardDefinition[], configs: Record<string, BoardConfig>) {
+    const previous = new Map<string, string | null>()
+    const definitions = orderedDashboards()
+    const ids = new Set([...definitions.map(item => item.id), ...nextDashboards.map(item => item.id)])
     try {
-      for (const dashboard of dashboards) {
-        const defaults = defaultDashboard(dashboard)
-        localStorage.setItem(dashboardStorageKey(dashboard), JSON.stringify(defaults))
-        if (dashboard === activeDashboard.value) config.value = defaults
+      previous.set(dashboardListStorageKey, localStorage.getItem(dashboardListStorageKey))
+      for (const id of ids) previous.set(dashboardStorageKey(id), localStorage.getItem(dashboardStorageKey(id)))
+      localStorage.setItem(dashboardListStorageKey, JSON.stringify(nextDashboards))
+      for (const id of ids) {
+        if (!(id in configs)) localStorage.removeItem(dashboardStorageKey(id))
       }
-      history.value = []
-      message.value = ''
-      ready.value = true
-      void queueRemoteSaveAll()
+      for (const [id, board] of Object.entries(configs)) localStorage.setItem(dashboardStorageKey(id), JSON.stringify(board))
       return true
     } catch {
-      message.value = 'Stockage indisponible : les tableaux n’ont pas été réinitialisés'
-      return false
-    }
-  }
-  function readAllDashboards(): Record<DashboardId, BoardConfig> {
-    const dashboards: DashboardId[] = ['daily', 'tech', 'cinema']
-    const result = {} as Record<DashboardId, BoardConfig>
-    for (const dashboard of dashboards) {
-      if (ready.value && activeDashboard.value === dashboard) {
-        result[dashboard] = config.value
-        continue
-      }
-      const raw = localStorage.getItem(dashboardStorageKey(dashboard))
-      if (!raw) {
-        result[dashboard] = defaultDashboard(dashboard)
-        continue
-      }
-      const parsed = parseBoard(JSON.parse(raw))
-      if (!parsed) throw new Error(`Configuration illisible pour le tableau ${dashboard}`)
-      result[dashboard] = upgradeDashboardDefaults(dashboard, parsed)
-    }
-    return result
-  }
-  function replaceAllDashboards(configurations: Record<DashboardId, BoardConfig>) {
-    const dashboards: DashboardId[] = ['daily', 'tech', 'cinema']
-    const parsed = {} as Record<DashboardId, BoardConfig>
-    for (const dashboard of dashboards) {
-      const board = parseBoard(configurations[dashboard])
-      if (!board) {
-        message.value = `Configuration invalide pour le tableau ${dashboard}`
-        return false
-      }
-      parsed[dashboard] = upgradeDashboardDefaults(dashboard, board)
-    }
-
-    const previous = new Map<string, string | null>()
-    try {
-      for (const dashboard of dashboards) {
-        const key = dashboardStorageKey(dashboard)
-        previous.set(key, localStorage.getItem(key))
-      }
-      for (const dashboard of dashboards) {
-        localStorage.setItem(dashboardStorageKey(dashboard), JSON.stringify(parsed[dashboard]))
-      }
-    } catch {
       for (const [key, value] of previous) {
-        try {
-          if (value === null) localStorage.removeItem(key)
-          else localStorage.setItem(key, value)
-        } catch { /* Best-effort rollback if browser storage becomes unavailable. */ }
+        try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value) }
+        catch { /* Best-effort rollback if browser storage becomes unavailable. */ }
       }
-      message.value = 'Stockage indisponible : la configuration n’a pas été importée'
+      message.value = 'Stockage indisponible : les tableaux n’ont pas été modifiés'
       return false
     }
+  }
 
-    if (ready.value) config.value = parsed[activeDashboard.value]
+  function updateDashboardList(next: DashboardDefinition[], activeId = activeDashboard.value) {
+    const definitions = parseDashboardDefinitions(next.map((item, order) => ({ ...item, order })))
+    if (!definitions) { message.value = 'Nom ou liste de tableaux invalide'; return false }
+    const configurations = Object.fromEntries(definitions.map(item => [item.id, readDashboard(item.id)]))
+    if (!writeCollection(definitions, configurations)) return false
+    dashboards.value = definitions
+    dashboardListLoaded = true
+    if (!definitions.some(item => item.id === activeId)) activeId = definitions[0]!.id
+    if (ready.value && activeDashboard.value !== activeId) {
+      activeDashboard.value = activeId
+      config.value = configurations[activeId]!
+      history.value = []
+    }
+    message.value = ''
+    void queueRemoteSaveAll(readAllDashboards())
+    return true
+  }
+
+  function readDashboard(id: string): BoardConfig {
+    if (ready.value && activeDashboard.value === id) return config.value
+    try {
+      const raw = localStorage.getItem(dashboardStorageKey(id))
+      if (!raw) return defaultDashboard(id)
+      const parsed = parseBoard(JSON.parse(raw))
+      if (!parsed) throw new Error(`Configuration illisible pour le tableau ${id}`)
+      return dashboardIds.includes(id) ? upgradeDashboardDefaults(id, parsed) : parsed
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : `Configuration illisible pour le tableau ${id}`)
+    }
+  }
+
+  function createDashboard(title: string) {
+    const normalized = title.trim()
+    if (!normalized || normalized.length > 40 || orderedDashboards().some(item => item.title.toLocaleLowerCase('fr') === normalized.toLocaleLowerCase('fr'))) {
+      message.value = 'Choisissez un nom de 1 à 40 caractères, différent des autres tableaux.'
+      return null
+    }
+    const id = crypto.randomUUID()
+    const next = [...orderedDashboards(), { id, title: normalized, order: dashboards.value.length }]
+    const configs = Object.fromEntries(next.map(item => [item.id, item.id === id ? defaultDashboard(id) : readDashboard(item.id)]))
+    if (!writeCollection(next, configs)) return null
+    dashboards.value = next
+    activeDashboard.value = id
+    config.value = defaultDashboard(id)
+    ready.value = true
     history.value = []
     message.value = ''
-    void queueRemoteSaveAll(parsed)
+    void queueRemoteSaveAll(readAllDashboards())
+    return id
+  }
+
+  function renameDashboard(id: string, title: string) {
+    const normalized = title.trim()
+    if (!normalized || normalized.length > 40 || orderedDashboards().some(item => item.id !== id && item.title.toLocaleLowerCase('fr') === normalized.toLocaleLowerCase('fr'))) {
+      message.value = 'Choisissez un nom de 1 à 40 caractères, différent des autres tableaux.'
+      return false
+    }
+    return updateDashboardList(orderedDashboards().map(item => item.id === id ? { ...item, title: normalized } : item))
+  }
+
+  function moveDashboard(id: string, direction: -1 | 1) {
+    const next = orderedDashboards()
+    const index = next.findIndex(item => item.id === id)
+    const target = index + direction
+    if (index < 0 || target < 0 || target >= next.length) return false
+    ;[next[index], next[target]] = [next[target]!, next[index]!]
+    return updateDashboardList(next)
+  }
+
+  function deleteDashboard(id: string) {
+    const next = orderedDashboards().filter(item => item.id !== id)
+    if (next.length === dashboards.value.length || next.length === 0) {
+      message.value = 'Conservez au moins un tableau.'
+      return false
+    }
+    return updateDashboardList(next, next[0]!.id)
+  }
+
+  function resetDispositions() {
+    const next = defaultDashboardDefinitions.map(item => ({ ...item }))
+    const configs = Object.fromEntries(next.map(item => [item.id, defaultDashboard(item.id)]))
+    if (!writeCollection(next, configs)) return false
+    dashboards.value = next
+    const active = next.some(item => item.id === activeDashboard.value) ? activeDashboard.value : 'daily'
+    activeDashboard.value = active
+    config.value = configs[active]!
+    history.value = []
+    message.value = ''
+    ready.value = true
+    void queueRemoteSaveAll(readAllDashboards())
+    return true
+  }
+
+  function readAllDashboards(): DashboardBackup[] {
+    loadDashboardList()
+    return orderedDashboards().map((definition, order) => ({ ...definition, order, config: readDashboard(definition.id) }))
+  }
+
+  function replaceAllDashboards(items: DashboardBackup[]) {
+    const definitions = parseDashboardDefinitions(items.map(({ id, title }, order) => ({ id, title, order })))
+    if (!definitions || definitions.length !== items.length) {
+      message.value = 'Configuration invalide : la liste des tableaux ne peut pas être importée'
+      return false
+    }
+    const configurations: Record<string, BoardConfig> = {}
+    for (const item of items) {
+      const parsed = parseBoard(item.config)
+      if (!parsed) { message.value = `Configuration invalide pour le tableau ${item.title}`; return false }
+      configurations[item.id] = dashboardIds.includes(item.id) ? upgradeDashboardDefaults(item.id, parsed) : parsed
+    }
+    if (!writeCollection(definitions, configurations)) return false
+    dashboards.value = definitions
+    dashboardListLoaded = true
+    const active = definitions.some(item => item.id === activeDashboard.value) ? activeDashboard.value : definitions[0]!.id
+    activeDashboard.value = active
+    config.value = configurations[active]!
+    ready.value = true
+    history.value = []
+    message.value = ''
+    void queueRemoteSaveAll(readAllDashboards())
     return true
   }
 
@@ -174,12 +303,18 @@ export const useBoardStore = defineStore('board', () => {
     remoteEnabled.value = false
     syncedUserId.value = ''
     try {
-      const result = await $fetch<{ dashboards: Record<DashboardId, BoardConfig>; hasStoredDashboards: boolean }>('/api/boards')
+      const localOwner = localStorage.getItem(dashboardStorageOwnerKey)
+      const result = await $fetch<{ dashboards: DashboardBackup[]; hasStoredDashboards: boolean }>('/api/boards')
       if (result.hasStoredDashboards) {
         if (!replaceAllDashboards(result.dashboards)) throw new Error('Impossible de charger les tableaux du compte.')
+      } else if (shouldDiscardForeignDashboardCache(localOwner, userId, result.hasStoredDashboards)) {
+        const freshDashboards = defaultDashboardDefinitions.map(definition => ({ ...definition, config: defaultDashboard(definition.id) }))
+        if (!replaceAllDashboards(freshDashboards)) throw new Error('Impossible d’initialiser les tableaux de ce compte.')
+        await $fetch('/api/boards', { method: 'PUT', body: { dashboards: readAllDashboards() } })
       } else {
         await $fetch('/api/boards', { method: 'PUT', body: { dashboards: readAllDashboards() } })
       }
+      localStorage.setItem(dashboardStorageOwnerKey, userId)
       remoteEnabled.value = true
       syncedUserId.value = userId
       message.value = ''
@@ -196,5 +331,10 @@ export const useBoardStore = defineStore('board', () => {
     syncedUserId.value = ''
   }
 
-  return { activeDashboard, config, ready, message, history, widgets, init, setLayout, saveWidget, removeWidget, undo, resetDispositions, readAllDashboards, replaceAllDashboards, syncWithAccount, disableRemoteSync }
+  return {
+    activeDashboard, dashboards, config, ready, message, history, widgets,
+    init, setLayout, saveWidget, removeWidget, undo, createDashboard, renameDashboard,
+    moveDashboard, deleteDashboard, resetDispositions, readAllDashboards,
+    replaceAllDashboards, syncWithAccount, disableRemoteSync,
+  }
 })

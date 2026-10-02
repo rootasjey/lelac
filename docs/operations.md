@@ -33,4 +33,4 @@ Look for `auth_email_delivery_failed`; then check the Cloudflare Email Service s
 
 ## Account deletion
 
-The authenticated deletion endpoint requires the current password and the exact confirmation `SUPPRIMER`. It deletes only the current account; D1 cascades remove that account's dashboards and authentication tokens. The app clears the session and its local copies of the three dashboards after the endpoint succeeds. Do not run a deletion against a real account as an operational test; use the isolated test database in `tests/authApi.test.ts`.
+The authenticated deletion endpoint requires the current password and the exact confirmation `SUPPRIMER`. It deletes only the current account; D1 cascades remove that account's dashboards, dashboard definitions and authentication tokens. The app clears the session and local dashboard copies after the endpoint succeeds. Do not run a deletion against a real account as an operational test; use the isolated test database in `tests/authApi.test.ts`.

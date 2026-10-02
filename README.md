@@ -69,11 +69,13 @@ The production D1 database `lelac-auth-prod` is provisioned in the EU jurisdicti
 
 The production email, registration and verification, login, password reset, per-user board isolation, and save/reload flows have been manually verified on Workers. The production build, typecheck, test suite, D1 migration, Wrangler dry run, and deployed auth pages are also verified. Operational safeguards now include D1 Time Travel recovery, self-service account deletion, and privacy-safe email failure logs; see [production operations](docs/operations.md).
 
+The current product milestone is user-managed dashboards: create, rename, reorder and delete boards, with the first tab opening at home. The collection is persisted in D1 and local recovery storage and preserved by configuration import/export. The implementation is in progress; the authenticated browser review and production D1 migration remain before release. The detailed status and remaining checks live in [the roadmap](docs/roadmap.md).
+
 ## Current dashboard
 
-The `/` route opens Quotidien; Tech and Cinéma open separate dashboards. Tech is seeded with Google Developers videos, GitHub Blog and Cloudflare Workers AI RSS feeds, GitHub Trending repositories and developers, and recent OpenRouter models. Cinéma includes SCARE screenings and upcoming programming, a curated FilmsActu trailer feed, and Netflix, Apple TV, Prime Video and Disney+ release widgets. The catalogue also offers weather, clocks and Hacker News. Each dashboard supports adding, configuring, moving, resizing and removing widgets. Undo covers layout, settings, additions and deletions within the current session. A cancelled addition leaves no provisional widget.
+The account starts with Quotidien, Tech and Cinéma. The `/` route opens the first dashboard in the saved order; Tech is seeded with Google Developers videos, GitHub Blog and Cloudflare Workers AI RSS feeds, GitHub Trending repositories and developers, and recent OpenRouter models. Cinéma includes SCARE screenings and upcoming programming, a curated FilmsActu trailer feed, and Netflix, Apple TV, Prime Video and Disney+ release widgets. Users can create, rename, reorder and delete dashboards, and export/import their names, order and widget configuration. The catalogue also offers weather, clocks and Hacker News. Each dashboard supports adding, configuring, moving, resizing and removing widgets. Undo covers layout, settings, additions and deletions within the current session. A cancelled addition leaves no provisional widget.
 
-- Quotidien keeps its configuration under `lelac:board:v1`; Tech uses `lelac:board:v1:tech`. Earlier demonstration layouts are not migrated.
+- Each dashboard has a stable ID and its own browser-storage entry; dashboard names and order are stored separately. The three original IDs remain stable for existing installations.
 - Desktop supports drag/resize and keyboard-accessible adjustment controls. Mobile stacks widgets in desktop reading order and supports adding, configuring and removing widgets. Geometry editing remains desktop-only.
 - RSS and Atom feeds are fetched and parsed directly by the server from public HTTPS URLs; redirects are checked, responses are limited to 2 MiB and 12 seconds, and results are cached for 5 minutes. No conversion service or API key is required. Articles link to their original sources.
 - YouTube channel feeds use the official YouTube Data API through a server endpoint. Set `NUXT_YOUTUBE_API_KEY` in a local `.env` file for `bun run dev`, or as a Cloudflare Worker secret for deployment. The key never reaches the browser; recent video metadata is cached for 15 minutes.
@@ -88,7 +90,7 @@ The `/` route opens Quotidien; Tech and Cinéma open separate dashboards. Tech i
 ## Delivery order
 
 1. **Polished reference dashboard:** implemented locally with representative content and readable mobile layouts.
-2. **Complete visual workflow:** implemented locally, including navigation, add/configure/move/resize/remove, undo, accessible adjustment controls, themes and portable configuration backups. Browser storage still limits persistence to one browser.
+2. **Complete visual workflow:** implemented locally, including navigation, add/configure/move/resize/remove, undo, accessible adjustment controls, themes and portable configuration backups. Authenticated users sync per-account state through D1; browser storage remains a local recovery copy.
 3. **Workers runtime and durable persistence:** local Worker build/preview, D1 schema, authenticated account flows and protected configuration endpoints are implemented and deployed; production auth and per-user persistence flows have been verified.
 4. **Useful content:** the current Tech and Cinema boards include independent trends, screenings, trailers and streaming announcements. Expand sources when a reliable source adds clear value.
 
@@ -96,7 +98,7 @@ Each milestone should be usable before expanding the scope. Validate desktop and
 
 ## Deferred
 
-OAuth, passwordless magic links, account deletion, public dashboard sharing, Docker and Umbrel packaging, plugin marketplace, third-party plugin sandbox, plugin SDK, and YAML editing are deferred. Revisit them only when actual usage justifies the cost.
+OAuth, passwordless magic links, public dashboard sharing, Docker and Umbrel packaging, plugin marketplace, third-party plugin sandbox, plugin SDK, and YAML editing are deferred. Revisit them only when actual usage justifies the cost.
 
 ## Local development
 

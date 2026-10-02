@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { createConfigurationBundle, parseConfigurationBundle } from '~/utils/configTransfer'
 import type { ThemePreference } from '~/utils/configTransfer'
-import { dashboardIds, dashboardStorageKey } from '~/utils/boardConfig'
+import { dashboardListStorageKey, dashboardStorageKey, dashboardStorageOwnerKey } from '~/utils/boardConfig'
 
 const colorMode = useColorMode()
 const boardStore = useBoardStore()
@@ -24,20 +24,21 @@ const showImportConfirmation = ref(false)
 const pendingImport = ref<ReturnType<typeof parseConfigurationBundle>>(null)
 const activeTheme = computed(() => colorMode.preference)
 const pendingImportSummary = computed(() => pendingImport.value
-  ? dashboardIds.map((id) => `${dashboardLabel[id]} : ${pendingImport.value!.dashboards[id].widgets.length} widget${pendingImport.value!.dashboards[id].widgets.length === 1 ? '' : 's'}`).join(' · ')
+  ? pendingImport.value.dashboards.map(dashboard => `${dashboard.title} : ${dashboard.config.widgets.length} widget${dashboard.config.widgets.length === 1 ? '' : 's'}`).join(' · ')
   : '')
-const dashboardLabel = { daily: 'Quotidien', tech: 'Tech', cinema: 'Cinéma' } as const
 const returnToBoard = computed(() => {
   const routeBoard = route.query.board
-  const board = routeBoard === 'tech' || routeBoard === 'cinema' ? routeBoard : boardStore.activeDashboard
-  return board === 'daily' ? '/' : `/?board=${board}`
+  const board = typeof routeBoard === 'string' && boardStore.dashboards.some(item => item.id === routeBoard)
+    ? routeBoard
+    : boardStore.activeDashboard
+  return board === boardStore.dashboards[0]?.id ? '/' : `/?board=${board}`
 })
 
 useHead({ title: 'Paramètres — Le Lac' })
 
 onMounted(() => {
   const queryBoard = route.query.board
-  boardStore.init(queryBoard === 'tech' || queryBoard === 'cinema' ? queryBoard : 'daily')
+  boardStore.init(typeof queryBoard === 'string' ? queryBoard : undefined)
   void boardStore.syncWithAccount()
 })
 
@@ -63,9 +64,15 @@ async function deleteAccount() {
     })
     boardStore.disableRemoteSync()
     await authSession.clear()
-    for (const id of dashboardIds) {
+    for (const dashboard of boardStore.dashboards) {
+      const id = dashboard.id
       try { localStorage.removeItem(dashboardStorageKey(id)) } catch { /* The remote account was already deleted. */ }
     }
+    try {
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith('lelac:board:v1:') || key === dashboardListStorageKey || key === dashboardStorageOwnerKey) localStorage.removeItem(key)
+      }
+    } catch { /* The account was removed remotely; clear any remaining local data when available. */ }
     deletePassword.value = ''
     deletePhrase.value = ''
     showDeleteConfirmation.value = false
@@ -235,12 +242,12 @@ function importConfiguration() {
         <section class="settings-section" aria-labelledby="boards-heading">
           <div class="section-heading">
             <h2 id="boards-heading">Tableaux</h2>
-            <p>Cette action restaure les dispositions de Quotidien, Tech et Cinéma.</p>
+            <p>Cette action restaure les trois tableaux de départ et retire les tableaux personnalisés.</p>
           </div>
           <div class="setting-row reset-row">
             <div class="setting-copy">
               <h3>Disposition initiale</h3>
-              <p>Vos tableaux personnalisés et leurs réglages de widgets seront remplacés.</p>
+              <p>Les noms, l’ordre et les widgets personnalisés seront remplacés par les réglages de départ.</p>
             </div>
             <button type="button" class="reset-button" @click="showResetConfirmation = true">Réinitialiser les tableaux</button>
           </div>
@@ -255,7 +262,7 @@ function importConfiguration() {
           <div class="setting-row transfer-row">
             <div class="setting-copy">
               <h3>Configuration Le Lac</h3>
-              <p>Inclut le thème, les widgets et les réglages de vos {{ dashboardIds.length }} tableaux.</p>
+              <p>Inclut le thème, les widgets, les noms et l’ordre de vos {{ boardStore.dashboards.length }} tableaux.</p>
             </div>
             <div class="transfer-actions">
               <button type="button" class="reset-button" @click="exportConfiguration">Exporter</button>
@@ -313,7 +320,7 @@ function importConfiguration() {
     </dialog>
     <dialog ref="importDialog" class="reset-confirmation" aria-labelledby="import-title" @cancel.prevent="showImportConfirmation = false" @click="($event.target === $event.currentTarget) && (showImportConfirmation = false)">
       <h2 id="import-title">Importer cette configuration ?</h2>
-      <p>Le thème et les {{ dashboardIds.length }} tableaux de cette application seront remplacés par le contenu du fichier.</p>
+      <p>Le thème et les {{ pendingImport?.dashboards.length ?? 0 }} tableaux de cette application seront remplacés par le contenu du fichier.</p>
       <p class="import-summary">{{ pendingImportSummary }}</p>
       <footer>
         <button type="button" class="cancel-button" @click="showImportConfirmation = false">Annuler</button>

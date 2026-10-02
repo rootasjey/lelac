@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useBoardStore } from '../app/stores/board'
-import { dashboardStorageKey, defaultDashboard, widgetDefaults } from '../app/utils/boardConfig'
+import { dashboardListStorageKey, dashboardStorageKey, defaultDashboard, defaultDashboardDefinitions, shouldDiscardForeignDashboardCache, widgetDefaults } from '../app/utils/boardConfig'
 
 const storage = new Map<string, string>()
 
@@ -109,21 +109,61 @@ describe('board undo', () => {
     store.removeWidget('cinema-trailers')
 
     const exported = store.readAllDashboards()
-    expect(exported.daily.widgets.some(widget => widget.id === 'extra-feed')).toBe(true)
-    expect(exported.cinema.widgets.some(widget => widget.id === 'cinema-trailers')).toBe(false)
+    expect(exported.find(item => item.id === 'daily')?.config.widgets.some(widget => widget.id === 'extra-feed')).toBe(true)
+    expect(exported.find(item => item.id === 'cinema')?.config.widgets.some(widget => widget.id === 'cinema-trailers')).toBe(false)
 
-    const replacement = {
-      daily: defaultDashboard('daily'),
-      tech: defaultDashboard('tech'),
-      cinema: { ...defaultDashboard('cinema'), options: { showTrailers: false } },
-    }
+    const replacement = defaultDashboardDefinitions.map(definition => ({
+      ...definition,
+      config: definition.id === 'cinema' ? { ...defaultDashboard('cinema'), options: { showTrailers: false } } : defaultDashboard(definition.id),
+    }))
     expect(store.replaceAllDashboards(replacement)).toBe(true)
-    expect(store.config).toEqual(replacement.cinema)
-    expect(JSON.parse(localStorage.getItem(dashboardStorageKey('daily'))!)).toEqual(replacement.daily)
-    expect(JSON.parse(localStorage.getItem(dashboardStorageKey('tech'))!)).toEqual(replacement.tech)
-    expect(JSON.parse(localStorage.getItem(dashboardStorageKey('cinema'))!)).toEqual(replacement.cinema)
+    expect(store.config).toEqual(replacement[2]!.config)
+    expect(JSON.parse(localStorage.getItem(dashboardStorageKey('daily'))!)).toEqual(replacement[0]!.config)
+    expect(JSON.parse(localStorage.getItem(dashboardStorageKey('tech'))!)).toEqual(replacement[1]!.config)
+    expect(JSON.parse(localStorage.getItem(dashboardStorageKey('cinema'))!)).toEqual(replacement[2]!.config)
+    expect(JSON.parse(localStorage.getItem(dashboardListStorageKey)!)).toEqual(defaultDashboardDefinitions)
 
     store.saveWidget({ ...store.widgets[0]!, title: 'Cinéma personnalisé' })
     expect(store.config.options).toEqual({ showTrailers: false })
+  })
+
+  it('creates, renames, reorders, and deletes a user dashboard while retaining one', () => {
+    setActivePinia(createPinia())
+    const store = useBoardStore()
+    store.init('daily')
+    const id = store.createDashboard('Voyages')!
+    expect(store.activeDashboard).toBe(id)
+    expect(store.config.widgets).toEqual([])
+    expect(store.renameDashboard(id, 'Carnets')).toBe(true)
+    expect(store.dashboards.at(-1)).toMatchObject({ id, title: 'Carnets', order: 3 })
+    expect(store.moveDashboard(id, -1)).toBe(true)
+    expect(store.dashboards[2]).toMatchObject({ id, title: 'Carnets', order: 2 })
+    expect(JSON.parse(localStorage.getItem(dashboardListStorageKey)!)).toEqual(store.dashboards)
+    expect(store.deleteDashboard(id)).toBe(true)
+    expect(store.dashboards.map(item => item.id)).toEqual(['daily', 'tech', 'cinema'])
+    expect(localStorage.getItem(dashboardStorageKey(id))).toBeNull()
+    expect(store.deleteDashboard('daily')).toBe(true)
+    expect(store.deleteDashboard('tech')).toBe(true)
+    expect(store.deleteDashboard('cinema')).toBe(false)
+    expect(store.dashboards).toHaveLength(1)
+  })
+
+  it('uses the first dashboard as the home dashboard after reordering', () => {
+    setActivePinia(createPinia())
+    const store = useBoardStore()
+    store.init()
+    expect(store.activeDashboard).toBe('daily')
+    expect(store.moveDashboard('daily', 1)).toBe(true)
+    store.init()
+    expect(store.dashboards[0]?.id).toBe('tech')
+    expect(store.activeDashboard).toBe('tech')
+    expect(store.config).toEqual(defaultDashboard('tech'))
+  })
+
+  it('only discards a foreign account cache when the remote account has no saved dashboards', () => {
+    expect(shouldDiscardForeignDashboardCache('account-a', 'account-b', false)).toBe(true)
+    expect(shouldDiscardForeignDashboardCache('account-b', 'account-b', false)).toBe(false)
+    expect(shouldDiscardForeignDashboardCache(null, 'account-b', false)).toBe(false)
+    expect(shouldDiscardForeignDashboardCache('account-a', 'account-b', true)).toBe(false)
   })
 })

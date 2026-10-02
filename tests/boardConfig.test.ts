@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
-import { dashboardStorageKey, defaultBoard, defaultDashboard, parseBoard, upgradeDashboardDefaults, widgetDefaults } from '../app/utils/boardConfig'
+import { dashboardStorageKey, defaultBoard, defaultDashboard, parseBoard, parseDashboardDefinitions, upgradeDashboardDefaults, widgetDefaults } from '../app/utils/boardConfig'
 import { normalizeFeedUrl } from '../shared/utils/feedUrl'
 import { parseFeedXml } from '../shared/utils/feed'
 import { normalizeYoutubeChannelId, youtubeChannelHandleFromInput, youtubePublishedDateLabel, youtubeThumbnailCandidates } from '../shared/utils/youtubeFeed'
@@ -8,6 +8,18 @@ import { parseGitHubTrendingDevelopersHtml, parseGitHubTrendingHtml } from '../s
 import { normalizeHackerNewsStory } from '../shared/utils/hackerNews'
 
 describe('board configuration', () => {
+  it('validates a forward-compatible, ordered list of user dashboards', () => {
+    const valid = [
+      { id: 'daily', title: 'Quotidien', order: 0 },
+      { id: '123e4567-e89b-42d3-a456-426614174000', title: 'Voyages', order: 1 },
+    ]
+    expect(parseDashboardDefinitions(valid)).toEqual(valid)
+    expect(parseDashboardDefinitions([...valid, { id: valid[0]!.id, title: 'Duplicate ID', order: 2 }])).toBeNull()
+    expect(parseDashboardDefinitions([{ ...valid[0]!, title: ' ' }])).toBeNull()
+    expect(parseDashboardDefinitions([{ ...valid[0]!, order: 1 }])).toBeNull()
+    expect(parseDashboardDefinitions([{ id: 'not-a-stable-id', title: 'Invalid ID', order: 0 }])).toBeNull()
+  })
+
   it('uses the public demo feed for new boards', () => {
     const board = defaultBoard()
     expect(board.widgets[0]?.title).toBe('The Conversation · À la une')

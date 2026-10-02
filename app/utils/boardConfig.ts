@@ -5,8 +5,20 @@ import { cinemaLocationFromLegacyArea, isCinemaLocation, type CinemaLocation, ty
 export type WidgetKind = 'rss' | 'weather' | 'clock' | 'youtube' | 'github-trending' | 'github-developers-trending' | 'hacker-news' | 'openrouter-models' | 'cinema' | 'cinema-releases' | 'netflix-releases' | 'apple-tv-releases' | 'prime-video-releases' | 'disney-plus-announcements'
 export type GitHubTrendingPeriod = 'daily' | 'weekly' | 'monthly'
 export interface City { name: string; timezone: string }
-export type DashboardId = 'daily' | 'tech' | 'cinema'
+export type DashboardId = string
+export interface DashboardDefinition { id: DashboardId; title: string; order: number }
+export interface DashboardBackup extends DashboardDefinition { config: BoardConfig }
 export const dashboardIds: DashboardId[] = ['daily', 'tech', 'cinema']
+export const defaultDashboardDefinitions: DashboardDefinition[] = [
+  { id: 'daily', title: 'Quotidien', order: 0 },
+  { id: 'tech', title: 'Tech', order: 1 },
+  { id: 'cinema', title: 'Cinéma', order: 2 },
+]
+export const dashboardListStorageKey = 'lelac:dashboards:v1'
+export const dashboardStorageOwnerKey = 'lelac:dashboards-owner:v1'
+export function shouldDiscardForeignDashboardCache(localOwner: string | null, userId: string, hasStoredDashboards: boolean) {
+  return Boolean(localOwner && localOwner !== userId && !hasStoredDashboards)
+}
 export interface BoardWidget {
   id: string
   type: WidgetKind
@@ -72,6 +84,7 @@ export function defaultDashboard(id: DashboardId): BoardConfig {
       { ...widgetDefaults('disney-plus-announcements', 'disney-plus-announcements'), y: 41 },
     ],
   }
+  if (id !== 'tech') return { version: 1, widgets: [] }
   return {
     version: 1,
     widgets: [
@@ -123,6 +136,30 @@ export function defaultDashboard(id: DashboardId): BoardConfig {
       },
     ],
   }
+}
+
+export function isValidDashboardId(value: unknown): value is DashboardId {
+  return typeof value === 'string' && (dashboardIds.includes(value) || /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value))
+}
+
+export function parseDashboardDefinitions(value: unknown): DashboardDefinition[] | null {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 20) return null
+  const definitions: DashboardDefinition[] = []
+  const ids = new Set<string>()
+  const titles = new Set<string>()
+  for (const item of value) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return null
+    const { id, title, order } = item as Record<string, unknown>
+    if (!isValidDashboardId(id) || ids.has(id)) return null
+    if (typeof title !== 'string' || title.trim().length < 1 || title.trim().length > 40) return null
+    if (!Number.isInteger(order) || order !== definitions.length) return null
+    const normalizedTitle = title.trim().toLocaleLowerCase('fr')
+    if (titles.has(normalizedTitle)) return null
+    ids.add(id)
+    titles.add(normalizedTitle)
+    definitions.push({ id, title: title.trim(), order: order as number })
+  }
+  return definitions
 }
 
 /** Upgrade only untouched Tech seeds from before the feed and trend defaults were added. */
