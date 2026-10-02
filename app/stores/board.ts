@@ -9,10 +9,38 @@ export const useBoardStore = defineStore('board', () => {
   const ready = ref(false)
   const message = ref('')
   const history = ref<BoardConfig[]>([])
+  const remoteEnabled = ref(false)
+  const syncedUserId = ref('')
   const widgets = computed(() => config.value.widgets)
+  let remoteSaveTimer: ReturnType<typeof setTimeout> | undefined
+
+  function queueRemoteSave() {
+    if (!remoteEnabled.value || !syncedUserId.value || typeof window === 'undefined') return
+    if (remoteSaveTimer) clearTimeout(remoteSaveTimer)
+    remoteSaveTimer = setTimeout(async () => {
+      try {
+        await $fetch(`/api/boards/${activeDashboard.value}`, { method: 'PUT', body: config.value })
+        if (message.value.startsWith('Synchronisation')) message.value = ''
+      } catch {
+        message.value = 'Synchronisation impossible : vos modifications restent enregistrées dans ce navigateur'
+      }
+    }, 450)
+  }
+
+  async function queueRemoteSaveAll(configurations = readAllDashboards()) {
+    if (!remoteEnabled.value || !syncedUserId.value) return
+    try {
+      await $fetch('/api/boards', { method: 'PUT', body: { dashboards: configurations } })
+      if (message.value.startsWith('Synchronisation')) message.value = ''
+    } catch {
+      message.value = 'Synchronisation impossible : vos modifications restent enregistrées dans ce navigateur'
+    }
+  }
+
   function persist() {
-    try { localStorage.setItem(dashboardStorageKey(activeDashboard.value), JSON.stringify(config.value)); message.value = '' }
+    try { localStorage.setItem(dashboardStorageKey(activeDashboard.value), JSON.stringify(config.value)); if (!message.value.startsWith('Synchronisation')) message.value = '' }
     catch { message.value = 'Stockage indisponible : les modifications ne sont pas enregistrées' }
+    queueRemoteSave()
   }
   function init(dashboard: DashboardId = 'daily') {
     if (ready.value && activeDashboard.value === dashboard) return
@@ -68,6 +96,7 @@ export const useBoardStore = defineStore('board', () => {
       history.value = []
       message.value = ''
       ready.value = true
+      void queueRemoteSaveAll()
       return true
     } catch {
       message.value = 'Stockage indisponible : les tableaux n’ont pas été réinitialisés'
@@ -128,7 +157,44 @@ export const useBoardStore = defineStore('board', () => {
     if (ready.value) config.value = parsed[activeDashboard.value]
     history.value = []
     message.value = ''
+    void queueRemoteSaveAll(parsed)
     return true
   }
-  return { activeDashboard, config, ready, message, history, widgets, init, setLayout, saveWidget, removeWidget, undo, resetDispositions, readAllDashboards, replaceAllDashboards }
+
+  async function syncWithAccount() {
+    const session = useUserSession()
+    const userId = session.user.value?.id
+    if (!userId) {
+      remoteEnabled.value = false
+      syncedUserId.value = ''
+      return
+    }
+    if (syncedUserId.value === userId && remoteEnabled.value) return
+
+    remoteEnabled.value = false
+    syncedUserId.value = ''
+    try {
+      const result = await $fetch<{ dashboards: Record<DashboardId, BoardConfig>; hasStoredDashboards: boolean }>('/api/boards')
+      if (result.hasStoredDashboards) {
+        if (!replaceAllDashboards(result.dashboards)) throw new Error('Impossible de charger les tableaux du compte.')
+      } else {
+        await $fetch('/api/boards', { method: 'PUT', body: { dashboards: readAllDashboards() } })
+      }
+      remoteEnabled.value = true
+      syncedUserId.value = userId
+      message.value = ''
+    } catch (error) {
+      remoteEnabled.value = false
+      syncedUserId.value = ''
+      message.value = error instanceof Error ? `Synchronisation impossible : ${error.message}` : 'Synchronisation impossible : les modifications restent dans ce navigateur'
+    }
+  }
+
+  function disableRemoteSync() {
+    if (remoteSaveTimer) clearTimeout(remoteSaveTimer)
+    remoteEnabled.value = false
+    syncedUserId.value = ''
+  }
+
+  return { activeDashboard, config, ready, message, history, widgets, init, setLayout, saveWidget, removeWidget, undo, resetDispositions, readAllDashboards, replaceAllDashboards, syncWithAccount, disableRemoteSync }
 })

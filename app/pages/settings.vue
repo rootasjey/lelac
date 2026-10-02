@@ -5,6 +5,7 @@ import { dashboardIds } from '~/utils/boardConfig'
 
 const colorMode = useColorMode()
 const boardStore = useBoardStore()
+const authSession = useUserSession()
 const route = useRoute()
 const runtimeConfig = useRuntimeConfig()
 const showResetConfirmation = ref(false)
@@ -27,6 +28,19 @@ const returnToBoard = computed(() => {
 })
 
 useHead({ title: 'Paramètres — Trame' })
+
+onMounted(() => {
+  const queryBoard = route.query.board
+  boardStore.init(queryBoard === 'tech' || queryBoard === 'cinema' ? queryBoard : 'daily')
+  void boardStore.syncWithAccount()
+})
+
+async function logout() {
+  await $fetch('/api/auth/logout', { method: 'POST' })
+  await authSession.clear()
+  boardStore.disableRemoteSync()
+  await navigateTo('/login')
+}
 
 watch(showResetConfirmation, async (show) => {
   await nextTick()
@@ -122,6 +136,20 @@ function importConfiguration() {
         <h1 id="settings-page-title">Paramètres</h1>
         <p class="settings-intro">Réglez l’apparence et retrouvez une disposition propre à tout moment.</p>
 
+        <section class="settings-section" aria-labelledby="account-heading">
+          <div class="section-heading">
+            <h2 id="account-heading">Compte</h2>
+            <p>Vos tableaux sont liés à cette adresse.</p>
+          </div>
+          <div class="setting-row">
+            <div class="setting-copy">
+              <h3>{{ authSession.user.value?.email }}</h3>
+              <p>Adresse confirmée</p>
+            </div>
+            <button type="button" class="reset-button" @click="logout">Se déconnecter</button>
+          </div>
+        </section>
+
         <section class="settings-section" aria-labelledby="appearance-heading">
           <div class="section-heading">
             <h2 id="appearance-heading">Apparence</h2>
@@ -197,7 +225,7 @@ function importConfiguration() {
           </div>
         </section>
 
-        <footer class="settings-footer">Les préférences sont enregistrées dans ce navigateur.</footer>
+        <footer class="settings-footer">Vos tableaux sont synchronisés avec votre compte. Une copie locale sert de récupération en cas d’indisponibilité.</footer>
       </section>
     </div>
 

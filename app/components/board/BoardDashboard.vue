@@ -265,7 +265,7 @@ function handleShortcut(event: KeyboardEvent) {
   event.preventDefault()
   action()
 }
-onMounted(() => { store.init(props.dashboardId); media = matchMedia(mobileBoardQuery); syncMobile(); media.addEventListener('change', syncMobile); window.addEventListener('keydown', handleShortcut) })
+onMounted(() => { store.init(props.dashboardId); void store.syncWithAccount(); media = matchMedia(mobileBoardQuery); syncMobile(); media.addEventListener('change', syncMobile); window.addEventListener('keydown', handleShortcut) })
 onBeforeUnmount(() => { media?.removeEventListener('change', syncMobile); window.removeEventListener('keydown', handleShortcut) })
 function configure(widget: BoardWidget) { isNew.value = false; settings.value = JSON.parse(JSON.stringify(widget)) }
 async function add(type: WidgetKind) {

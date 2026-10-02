@@ -2,13 +2,14 @@
 export default defineNuxtConfig({
   compatibilityDate: '2026-09-21',
   devtools: { enabled: true },
-  modules: ['@pinia/nuxt', '@unocss/nuxt', '@una-ui/nuxt'],
+  modules: ['@pinia/nuxt', '@unocss/nuxt', '@una-ui/nuxt', 'nuxt-auth-utils'],
   nitro: { preset: 'cloudflare-module' },
   runtimeConfig: {
     youtubeApiKey: '',
     openrouterApiKey: '',
     public: {
       appVersion: process.env.NUXT_PUBLIC_APP_VERSION ?? 'dev',
+      appUrl: process.env.NUXT_PUBLIC_APP_URL ?? '',
     },
   },
   colorMode: {
