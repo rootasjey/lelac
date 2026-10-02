@@ -13,7 +13,7 @@ This file tracks product milestones. `README.md` describes the current architect
 - [x] Add create, rename, reorder and delete operations, with at least one dashboard retained; the first dashboard is the home dashboard.
 - [x] Keep local recovery copies and authenticated per-user D1 sync aligned.
 - [x] Verify account isolation against the changed D1 API with two users on a local Worker and disposable D1 database.
-- [ ] Verify desktop/mobile management UI and route navigation in an authenticated browser, including an import/export round trip.
+- [x] Verify desktop/mobile management UI and route navigation in an authenticated browser, including an import/export round trip on an isolated local D1 database.
 - [x] Confirm a current Time Travel recovery bookmark is available for the production D1 database before migration.
 - [ ] Apply the pending D1 migration in production, deploy and verify the account flows after authorization.
 
