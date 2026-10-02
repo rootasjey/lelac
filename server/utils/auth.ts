@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3'
+import { useRuntimeConfig } from 'nitropack/runtime'
 
 export type AuthTokenPurpose = 'verify-email' | 'reset-password'
 
