@@ -12,7 +12,8 @@ This file tracks product milestones. `README.md` describes the current architect
 - [x] Add a forward-only D1 migration for custom IDs and per-user names/order; preserve existing configuration rows.
 - [x] Add create, rename, reorder and delete operations, with at least one dashboard retained; the first dashboard is the home dashboard.
 - [x] Keep local recovery copies and authenticated per-user D1 sync aligned.
-- [ ] Verify desktop/mobile management UI and route navigation in an authenticated browser, then repeat import/export and account-isolation checks against the changed D1 API.
+- [x] Verify account isolation against the changed D1 API with two users on a local Worker and disposable D1 database.
+- [ ] Verify desktop/mobile management UI and route navigation in an authenticated browser, including an import/export round trip.
 - [ ] Apply the D1 migration in production after confirming the deployed database snapshot/recovery point, then deploy and verify the account flows.
 
 ## Shipped foundations
