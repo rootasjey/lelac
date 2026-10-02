@@ -15,7 +15,8 @@ This file tracks product milestones. `README.md` describes the current architect
 - [x] Verify account isolation against the changed D1 API with two users on a local Worker and disposable D1 database.
 - [x] Verify desktop/mobile management UI and route navigation in an authenticated browser, including an import/export round trip on an isolated local D1 database.
 - [x] Confirm a current Time Travel recovery bookmark is available for the production D1 database before migration.
-- [ ] Apply the pending D1 migration in production, deploy and verify the account flows after authorization.
+- [x] Apply the pending D1 migration in production and deploy after authorization; verify the public login/home routes and that the boards API rejects unauthenticated requests.
+- [ ] Verify authenticated account flows against production using a designated test account; local account isolation and browser workflows are covered with disposable data.
 
 ## Shipped foundations
 
