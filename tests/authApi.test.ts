@@ -12,6 +12,7 @@ vi.mock('nitropack/runtime', () => ({
 
 const sessionWrites: unknown[] = []
 const sessionClears: h3.H3Event[] = []
+let authenticatedTestUser: { id: string; email: string } | null = null
 
 function installAuthGlobals() {
   for (const name of [
@@ -27,6 +28,7 @@ function installAuthGlobals() {
   vi.stubGlobal('clearUserSession', async (event: h3.H3Event) => {
     sessionClears.push(event)
   })
+  vi.stubGlobal('requireUserSession', async () => ({ user: authenticatedTestUser }))
   vi.stubGlobal('useRuntimeConfig', (event?: h3.H3Event) => event?.context.nitro?.runtimeConfig ?? {
     session: { password: 'test-session-secret-that-is-long-enough-for-auth-utils' },
     public: { appUrl: 'https://lelac.test' },
@@ -34,18 +36,20 @@ function installAuthGlobals() {
 }
 
 installAuthGlobals()
-const [registerModule, loginModule, resetModule, resetCompleteModule, verifyModule] = await Promise.all([
+const [registerModule, loginModule, resetModule, resetCompleteModule, verifyModule, accountModule] = await Promise.all([
   import('../server/api/auth/register.post'),
   import('../server/api/auth/login.post'),
   import('../server/api/auth/password-reset.post'),
   import('../server/api/auth/password-reset/complete.post'),
   import('../server/api/auth/verify.get'),
+  import('../server/api/auth/account.delete'),
 ])
 const registerHandler = registerModule.default
 const loginHandler = loginModule.default
 const resetHandler = resetModule.default
 const resetCompleteHandler = resetCompleteModule.default
 const verifyHandler = verifyModule.default
+const accountHandler = accountModule.default
 const { hashToken } = await import('../server/utils/auth')
 
 class SQLiteD1Statement {
@@ -59,6 +63,7 @@ class SQLiteD1Statement {
 function createD1TestDatabase() {
   const sqlite = new DatabaseSync(':memory:')
   sqlite.exec(`
+    PRAGMA foreign_keys = ON;
     CREATE TABLE users (
       id TEXT PRIMARY KEY NOT NULL, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL,
       email_verified_at TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -71,6 +76,11 @@ function createD1TestDatabase() {
     );
     CREATE TABLE auth_rate_limits (
       fingerprint TEXT PRIMARY KEY NOT NULL, window_started_at INTEGER NOT NULL, attempts INTEGER NOT NULL
+    );
+    CREATE TABLE dashboards (
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      dashboard_id TEXT NOT NULL, config_json TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, dashboard_id)
     );
   `)
   const d1 = {
@@ -106,6 +116,7 @@ function createAuthApi(db: Cloudflare.Env['DB']) {
   app.use('/api/auth/password-reset/complete', resetCompleteHandler)
   app.use('/api/auth/password-reset', resetHandler)
   app.use('/api/auth/verify', verifyHandler)
+  app.use('/api/auth/account', accountHandler)
   const handle = h3.toWebHandler(app)
   return (path: string, body?: unknown, method = 'POST') => handle(new Request(`https://lelac.test${path}`, {
     method,
@@ -122,6 +133,7 @@ describe('auth API', () => {
     installAuthGlobals()
     sessionWrites.length = 0
     sessionClears.length = 0
+    authenticatedTestUser = null
     database = createD1TestDatabase()
     request = createAuthApi(database.d1)
     vi.spyOn(console, 'info').mockImplementation(() => {})
@@ -268,5 +280,31 @@ describe('auth API', () => {
     const expired = await request(`/api/auth/verify?token=${expiredToken}`, undefined, 'GET')
     expect(expired.status).toBe(303)
     expect(expired.headers.get('location')).toBe('/login?verification=invalid')
+  })
+
+  it('requires password and explicit confirmation before deleting an account and its dashboards', async () => {
+    await request('/api/auth/register', { email: 'delete-me@example.com', password: 'account-password-123' })
+    const user = database.d1.prepare('SELECT id FROM users WHERE email = ?')
+      .bind('delete-me@example.com').first<{ id: string }>()
+    authenticatedTestUser = { id: user!.id, email: 'delete-me@example.com' }
+    database.d1.prepare('INSERT INTO dashboards (user_id, dashboard_id, config_json) VALUES (?, ?, ?)')
+      .bind(user!.id, 'daily', '{}').run()
+
+    const wrongPassword = await request('/api/auth/account', { password: 'incorrect-password', confirmation: 'SUPPRIMER' }, 'DELETE')
+    expect(wrongPassword.status).toBe(403)
+    expect(database.d1.prepare('SELECT COUNT(*) AS count FROM users').first<{ count: number }>()?.count).toBe(1)
+    expect(database.d1.prepare('SELECT COUNT(*) AS count FROM dashboards').first<{ count: number }>()?.count).toBe(1)
+
+    const missingConfirmation = await request('/api/auth/account', { password: 'account-password-123', confirmation: 'supprimer' }, 'DELETE')
+    expect(missingConfirmation.status).toBe(400)
+    expect(database.d1.prepare('SELECT COUNT(*) AS count FROM users').first<{ count: number }>()?.count).toBe(1)
+
+    const deleted = await request('/api/auth/account', { password: 'account-password-123', confirmation: 'SUPPRIMER' }, 'DELETE')
+    expect(deleted.status).toBe(200)
+    expect(await deleted.json()).toEqual({ ok: true })
+    expect(database.d1.prepare('SELECT COUNT(*) AS count FROM users').first<{ count: number }>()?.count).toBe(0)
+    expect(database.d1.prepare('SELECT COUNT(*) AS count FROM dashboards').first<{ count: number }>()?.count).toBe(0)
+    expect(database.d1.prepare('SELECT COUNT(*) AS count FROM auth_tokens').first<{ count: number }>()?.count).toBe(0)
+    expect(sessionClears).toHaveLength(1)
   })
 })

@@ -98,13 +98,21 @@ export async function sendAuthEmail(event: H3Event, input: { to: string; subject
   if (!env.EMAIL) {
     throw createError({ statusCode: 503, statusMessage: 'L’envoi des courriels n’est pas encore configuré.' })
   }
-  await env.EMAIL.send({
-    to: input.to,
-    from: { email: 'noreply@corpinot.cc', name: 'Le Lac' },
-    subject: input.subject,
-    html,
-    text,
-  })
+  try {
+    await env.EMAIL.send({
+      to: input.to,
+      from: { email: 'noreply@corpinot.cc', name: 'Le Lac' },
+      subject: input.subject,
+      html,
+      text,
+    })
+  } catch (error) {
+    console.error('auth_email_delivery_failed', {
+      action: input.action,
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+    })
+    throw createError({ statusCode: 503, statusMessage: 'Le courriel n’a pas pu être envoyé. Réessayez plus tard.' })
+  }
 }
 
 export function assertAuthEmailReady(event: H3Event, path: string) {

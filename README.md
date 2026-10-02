@@ -67,7 +67,7 @@ The visual editing workflow, responsive dashboard views, settings page, light/da
 
 The production D1 database `lelac-auth-prod` is provisioned in the EU jurisdiction, and migration `0001_auth_and_dashboards.sql` is applied. Cloudflare Email Sending is enabled for `corpinot.cc`, with `noreply@corpinot.cc` as the configured sender. The Worker is live at <https://lelac.jerem-dev.workers.dev>; its session secret and public URL are configured.
 
-The remaining deployment milestone is end-to-end verification: test email delivery, registration and email verification, login, password reset, per-user board isolation, and save/reload on Workers before broadly sharing the registration URL. The production build, typecheck, test suite, D1 migration, Wrangler dry run, and deployed login/registration pages have been verified. Add operational safeguards such as backups, account deletion, and monitoring based on deployment needs.
+The production email, registration and verification, login, password reset, per-user board isolation, and save/reload flows have been manually verified on Workers. The production build, typecheck, test suite, D1 migration, Wrangler dry run, and deployed auth pages are also verified. Operational safeguards now include D1 Time Travel recovery, self-service account deletion, and privacy-safe email failure logs; see [production operations](docs/operations.md).
 
 ## Current dashboard
 
@@ -83,13 +83,13 @@ The `/` route opens Quotidien; Tech and Cinéma open separate dashboards. Tech i
 - OpenRouter model metadata is public. To show the optional recent throughput comparison, set `NUXT_OPENROUTER_API_KEY` as a server-only secret; the app reads provider `p50` throughput over 30 minutes for up to the 12 newest models, and shows the column only in sufficiently wide tables. Without a key, the throughput column stays hidden; when the key is present but a model has no reported measurement, its cell shows a dash. The key is never sent to the browser.
 - Weather and city search use Open-Meteo. Search results must be explicitly selected. Clocks accept one to three named IANA timezones.
 - Nitro source endpoints have timeouts and caches (RSS: 5 minutes; weather: 10 minutes; city search: 1 hour). Visible widgets refresh every 10 minutes. Manual refresh reads the same server cache. Previously loaded data remains visible on refresh errors during the session; source changes clear the previous source.
-- Grid rendering starts after client mounting. Nitro and Wrangler are configured for Cloudflare Workers; production deployment, creating or renaming dashboards, and YAML editing remain unfinished. Legacy widgets are not offered in the new catalog.
+- Grid rendering starts after client mounting. Nitro and Wrangler are configured for Cloudflare Workers; production deployment and per-user dashboard persistence are active. Legacy widgets are not offered in the new catalog.
 
 ## Delivery order
 
 1. **Polished reference dashboard:** implemented locally with representative content and readable mobile layouts.
 2. **Complete visual workflow:** implemented locally, including navigation, add/configure/move/resize/remove, undo, accessible adjustment controls, themes and portable configuration backups. Browser storage still limits persistence to one browser.
-3. **Workers runtime and durable persistence:** local Worker build/preview, D1 schema, authenticated account flows and protected configuration endpoints implemented; production provisioning and verification remain.
+3. **Workers runtime and durable persistence:** local Worker build/preview, D1 schema, authenticated account flows and protected configuration endpoints are implemented and deployed; production auth and per-user persistence flows have been verified.
 4. **Useful content:** the current Tech and Cinema boards include independent trends, screenings, trailers and streaming announcements. Expand sources when a reliable source adds clear value.
 
 Each milestone should be usable before expanding the scope. Validate desktop and mobile rendering, the full edit/save/reload flow, and the actual Workers runtime before claiming those paths are complete.

@@ -11,6 +11,10 @@ const pending = ref(false)
 const errorMessage = ref('')
 const statusMessage = ref('')
 
+if (props.mode === 'login' && route.query['account-deleted'] === '1') {
+  statusMessage.value = 'Votre compte et ses tableaux ont été supprimés.'
+}
+
 const copy = computed(() => ({
   login: { title: 'Connexion', intro: 'Retrouvez vos tableaux dans Le Lac.', submit: 'Se connecter' },
   register: { title: 'Créer un compte', intro: 'Créez un compte pour retrouver vos tableaux partout.', submit: 'Créer mon compte' },

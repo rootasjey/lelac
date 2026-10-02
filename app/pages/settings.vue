@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { createConfigurationBundle, parseConfigurationBundle } from '~/utils/configTransfer'
 import type { ThemePreference } from '~/utils/configTransfer'
-import { dashboardIds } from '~/utils/boardConfig'
+import { dashboardIds, dashboardStorageKey } from '~/utils/boardConfig'
 
 const colorMode = useColorMode()
 const boardStore = useBoardStore()
@@ -11,6 +11,12 @@ const runtimeConfig = useRuntimeConfig()
 const showResetConfirmation = ref(false)
 const resetDialog = ref<HTMLDialogElement>()
 const resetError = ref('')
+const showDeleteConfirmation = ref(false)
+const deleteDialog = ref<HTMLDialogElement>()
+const deletePassword = ref('')
+const deletePhrase = ref('')
+const deleteError = ref('')
+const deletingAccount = ref(false)
 const transferMessage = ref('')
 const importFileInput = ref<HTMLInputElement>()
 const importDialog = ref<HTMLDialogElement>()
@@ -42,11 +48,53 @@ async function logout() {
   await navigateTo('/login')
 }
 
+async function deleteAccount() {
+  deleteError.value = ''
+  if (deletePhrase.value !== 'SUPPRIMER') {
+    deleteError.value = 'Saisissez SUPPRIMER pour confirmer.'
+    return
+  }
+
+  deletingAccount.value = true
+  try {
+    await $fetch('/api/auth/account', {
+      method: 'DELETE',
+      body: { password: deletePassword.value, confirmation: deletePhrase.value },
+    })
+    boardStore.disableRemoteSync()
+    await authSession.clear()
+    for (const id of dashboardIds) {
+      try { localStorage.removeItem(dashboardStorageKey(id)) } catch { /* The remote account was already deleted. */ }
+    }
+    deletePassword.value = ''
+    deletePhrase.value = ''
+    showDeleteConfirmation.value = false
+    await navigateTo('/login?account-deleted=1')
+  } catch (error) {
+    const fetchError = error as { data?: { statusMessage?: string }; statusMessage?: string }
+    deleteError.value = fetchError.data?.statusMessage || fetchError.statusMessage || 'Le compte n’a pas pu être supprimé.'
+  } finally {
+    deletingAccount.value = false
+  }
+}
+
 watch(showResetConfirmation, async (show) => {
   await nextTick()
   const dialog = resetDialog.value
   if (show && dialog && !dialog.open) dialog.showModal()
   else if (!show && dialog?.open) dialog.close()
+})
+
+watch(showDeleteConfirmation, async (show) => {
+  await nextTick()
+  const dialog = deleteDialog.value
+  if (show && dialog && !dialog.open) dialog.showModal()
+  else if (!show && dialog?.open) dialog.close()
+  if (!show) {
+    deletePassword.value = ''
+    deletePhrase.value = ''
+    deleteError.value = ''
+  }
 })
 
 watch(showImportConfirmation, async (show) => {
@@ -148,6 +196,13 @@ function importConfiguration() {
             </div>
             <button type="button" class="reset-button" @click="logout">Se déconnecter</button>
           </div>
+          <div class="setting-row account-danger-row">
+            <div class="setting-copy">
+              <h3>Supprimer le compte</h3>
+              <p>Efface votre compte et les tableaux synchronisés qui lui appartiennent.</p>
+            </div>
+            <button type="button" class="danger-button" @click="showDeleteConfirmation = true">Supprimer mon compte</button>
+          </div>
         </section>
 
         <section class="settings-section" aria-labelledby="appearance-heading">
@@ -237,6 +292,25 @@ function importConfiguration() {
         <button type="button" class="confirm-button" @click="resetDispositions">Réinitialiser</button>
       </footer>
     </dialog>
+    <dialog ref="deleteDialog" class="reset-confirmation delete-confirmation" aria-labelledby="delete-title" @cancel.prevent="showDeleteConfirmation = false" @click="($event.target === $event.currentTarget) && (showDeleteConfirmation = false)">
+      <h2 id="delete-title">Supprimer définitivement votre compte ?</h2>
+      <p>Cette action efface votre compte ainsi que les tableaux et liens de vérification associés. Elle ne peut pas être annulée.</p>
+      <form class="delete-form" @submit.prevent="deleteAccount">
+        <label>
+          <span>Mot de passe actuel</span>
+          <input v-model="deletePassword" type="password" autocomplete="current-password" minlength="12" maxlength="128" required>
+        </label>
+        <label>
+          <span>Saisissez SUPPRIMER pour confirmer</span>
+          <input v-model="deletePhrase" type="text" autocomplete="off" required>
+        </label>
+        <p v-if="deleteError" class="delete-error" role="alert">{{ deleteError }}</p>
+        <footer>
+          <button type="button" class="cancel-button" :disabled="deletingAccount" @click="showDeleteConfirmation = false">Annuler</button>
+          <button type="submit" class="danger-confirm-button" :disabled="deletingAccount || deletePhrase !== 'SUPPRIMER'">{{ deletingAccount ? 'Suppression…' : 'Supprimer le compte' }}</button>
+        </footer>
+      </form>
+    </dialog>
     <dialog ref="importDialog" class="reset-confirmation" aria-labelledby="import-title" @cancel.prevent="showImportConfirmation = false" @click="($event.target === $event.currentTarget) && (showImportConfirmation = false)">
       <h2 id="import-title">Importer cette configuration ?</h2>
       <p>Le thème et les {{ dashboardIds.length }} tableaux de cette application seront remplacés par le contenu du fichier.</p>
@@ -266,6 +340,7 @@ h1 { margin: 0; color: var(--board-text); font: 500 clamp(32px, 5vw, 46px)/1.12 
 .section-heading h2 { margin: 0; color: var(--board-text); font-size: 17px; font-weight: 600; }
 .section-heading p { margin: 4px 0 0; color: var(--board-text-muted); font-size: 13px; }
 .setting-row { display: flex; min-height: 88px; align-items: center; justify-content: space-between; gap: 24px; padding: 18px 20px; border-radius: 10px; background: var(--board-surface); }
+.account-danger-row { margin-top: 12px; }
 .setting-copy { min-width: 0; }
 .setting-copy h3 { margin: 0; color: var(--board-text); font-size: 14px; font-weight: 550; }
 .setting-copy p { margin: 5px 0 0; color: var(--board-text-muted); font-size: 12px; line-height: 1.5; }
@@ -301,6 +376,15 @@ h1 { margin: 0; color: var(--board-text); font: 500 clamp(32px, 5vw, 46px)/1.12 
 .reset-confirmation footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
 .confirm-button { border-color: var(--board-accent); background: var(--board-accent); color: var(--board-canvas); }
 .confirm-button:hover { filter: brightness(.95); }
+.danger-button, .danger-confirm-button { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; padding: 0 14px; border: 1px solid color-mix(in srgb, #d46e67 55%, var(--board-border)); border-radius: 6px; background: color-mix(in srgb, #d46e67 12%, var(--board-surface)); color: #e89a93; font: 12px/1 system-ui, sans-serif; cursor: pointer; }
+.danger-button:hover { background: color-mix(in srgb, #d46e67 20%, var(--board-surface)); }
+.danger-confirm-button { border-color: #b84640; background: #b84640; color: white; }
+.danger-confirm-button:disabled, .cancel-button:disabled { cursor: wait; opacity: .65; }
+.delete-form { display: grid; gap: 16px; margin-top: 18px; }
+.delete-form label { display: grid; gap: 7px; color: var(--board-text-soft); font-size: 12px; }
+.delete-form input { width: 100%; min-height: 40px; padding: 0 11px; border: 1px solid var(--board-border-strong); border-radius: 6px; outline: none; background: var(--board-surface-alt); color: var(--board-text); font: 13px/1.4 system-ui, sans-serif; }
+.delete-form input:focus-visible { border-color: var(--board-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--board-accent) 24%, transparent); }
+.delete-error { margin: 0; color: #df8f87; font-size: 12px; }
 .settings-page :focus-visible, .reset-confirmation :focus-visible { outline: 2px solid var(--board-accent-bright); outline-offset: 3px; }
 @media (max-width: 620px) {
   .settings-shell { padding: 12px 18px 90px; }
@@ -311,5 +395,6 @@ h1 { margin: 0; color: var(--board-text); font: 500 clamp(32px, 5vw, 46px)/1.12 
   .theme-options button { min-width: 0; flex: 1; padding-inline: 8px; }
   .transfer-actions { width: 100%; }
   .transfer-actions button { flex: 1; }
+  .account-danger-row button { width: 100%; }
 }
 </style>
