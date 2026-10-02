@@ -7,7 +7,7 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "bun run build && wrangler dev",
-    "deploy": "bun run build && wrangler deploy",
+    "deploy": "bun run build && wrangler deploy --config wrangler.production.jsonc",
     "postinstall": "nuxt prepare",
     "test": "vitest",
     "typecheck": "nuxt typecheck"

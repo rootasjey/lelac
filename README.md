@@ -63,17 +63,19 @@ Open email/password registration is implemented locally. Accounts must verify th
 
 ## Delivery status and next milestone
 
-The visual editing workflow, responsive dashboard views, settings page, light/dark/system themes, and versioned configuration import/export are implemented. The three dashboards and their cinema and streaming widgets are also in place. Account registration, verification, login, password reset, and per-user D1 dashboard storage are implemented for local development; production D1 and email-service resources are not provisioned.
+The visual editing workflow, responsive dashboard views, settings page, light/dark/system themes, and versioned configuration import/export are implemented. The three dashboards and their cinema and streaming widgets are also in place. Account registration, verification, login, password reset, and per-user D1 dashboard storage are implemented for local development; production provisioning is tracked in the deployment checklist below.
 
-The next milestone is to prepare and verify authenticated production deployment. Complete it in this order:
+The production D1 database `lelac-auth-prod` is provisioned in the EU jurisdiction, and migration `0001_auth_and_dashboards.sql` is applied. The Worker is not deployed yet: the account is on Workers Free, while Cloudflare Email Sending to arbitrary recipients requires Workers Paid. The plan starts at $5/month; do not open registration until email delivery works end to end.
+
+Complete production deployment in this order:
 
 1. Verify the production build and app routes in Wrangler's local Worker runtime.
-2. Provision and bind the production D1 database, then apply the checked-in migrations.
-3. Configure `NUXT_SESSION_PASSWORD`, `NUXT_PUBLIC_APP_URL`, and Cloudflare Email Service with an approved sender on the verified `corpinot.cc` domain.
-4. Verify registration, email verification, login, password reset, per-user board isolation, and save/reload on Workers before opening registration to public use.
+2. Enable an email-sending plan and onboard `corpinot.cc` in Cloudflare Email Service; use `noreply@corpinot.cc` as the sender.
+3. Set `NUXT_SESSION_PASSWORD` (at least 32 characters) and `NUXT_PUBLIC_APP_URL` to the deployed public URL.
+4. Deploy with `bun run deploy`, then verify registration, email verification, login, password reset, per-user board isolation, and save/reload on Workers before opening registration to public use.
 5. Add operational safeguards such as backups, account deletion, and monitoring based on deployment needs.
 
-The Worker production build, local D1 migrations, and a local Wrangler preview are verified. Dashboard APIs require an authenticated session and validate saved configurations. Production resources, sender-domain onboarding, email delivery, and deployment verification remain outstanding. Do not expose registration publicly until those production prerequisites and an end-to-end test are complete.
+The Worker production build, local D1 migrations, production D1 migration, and Wrangler production dry run are verified. Dashboard APIs require an authenticated session and validate saved configurations. Sender-domain onboarding, email delivery, deployment, and end-to-end verification remain outstanding. Do not expose registration publicly until those production prerequisites are complete.
 
 ## Current dashboard
 
@@ -127,7 +129,7 @@ NUXT_OPENROUTER_API_KEY=your-key
 
 For a deployed Worker, add it with `bunx wrangler secret put NUXT_OPENROUTER_API_KEY`.
 
-`bun run dev` starts Nuxt locally. `bun run build` produces the Cloudflare Worker artifact; `bun run preview` builds it and starts Wrangler locally. `bun run deploy` builds and deploys to Cloudflare Workers. Check types with `bun run typecheck` and run tests once with `bun run test --run`.
+`bun run dev` starts Nuxt locally. `bun run build` produces the Cloudflare Worker artifact; `bun run preview` builds it and starts Wrangler locally with the local D1 config. `bun run deploy` builds and deploys the production Wrangler config to Cloudflare Workers. Check types with `bun run typecheck` and run tests once with `bun run test --run`.
 
 Authentication requires a `NUXT_SESSION_PASSWORD` of at least 32 characters. For local Worker auth testing, build first, apply D1 migrations with `bunx wrangler d1 migrations apply lelac-auth-local --local`, then set a local-only `NUXT_PUBLIC_APP_URL` and `NUXT_SESSION_PASSWORD` before `bunx wrangler dev --local`. Wrangler's local email binding is not a production delivery setup. Production also requires a provisioned D1 database, an onboarded sender domain, and Cloudflare Email Service configuration.
 
