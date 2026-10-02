@@ -5,6 +5,7 @@ import {
   dashboardListStorageKey,
   dashboardStorageOwnerKey,
   dashboardStorageKey,
+  canPersistDashboardSnapshot,
   defaultDashboard,
   defaultDashboardDefinitions,
   parseBoard,
@@ -62,8 +63,10 @@ export const useBoardStore = defineStore('board', () => {
     if (remoteSaveTimer) clearTimeout(remoteSaveTimer)
     const dashboardId = activeDashboard.value
     const dashboardConfig = JSON.parse(JSON.stringify(config.value)) as BoardConfig
+    const snapshotUserId = syncedUserId.value
     remoteSaveTimer = setTimeout(async () => {
       remoteWriteQueue = remoteWriteQueue.then(async () => {
+        if (!canPersistDashboardSnapshot(snapshotUserId, syncedUserId.value, remoteEnabled.value)) return
         await $fetch(`/api/boards/${encodeURIComponent(dashboardId)}`, { method: 'PUT', body: dashboardConfig })
         if (message.value.startsWith('Synchronisation')) message.value = ''
       }).catch(() => {
@@ -77,7 +80,9 @@ export const useBoardStore = defineStore('board', () => {
     if (!remoteEnabled.value || !syncedUserId.value) return
     if (remoteSaveTimer) clearTimeout(remoteSaveTimer)
     const snapshot = JSON.parse(JSON.stringify(configurations)) as DashboardBackup[]
+    const snapshotUserId = syncedUserId.value
     remoteWriteQueue = remoteWriteQueue.then(async () => {
+      if (!canPersistDashboardSnapshot(snapshotUserId, syncedUserId.value, remoteEnabled.value)) return
       await $fetch('/api/boards', { method: 'PUT', body: { dashboards: snapshot } })
       if (message.value.startsWith('Synchronisation')) message.value = ''
     }).catch(() => {

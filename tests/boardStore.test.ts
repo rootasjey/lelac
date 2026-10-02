@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useBoardStore } from '../app/stores/board'
-import { dashboardListStorageKey, dashboardStorageKey, defaultDashboard, defaultDashboardDefinitions, shouldDiscardForeignDashboardCache, widgetDefaults } from '../app/utils/boardConfig'
+import { canPersistDashboardSnapshot, dashboardListStorageKey, dashboardStorageKey, defaultDashboard, defaultDashboardDefinitions, shouldDiscardForeignDashboardCache, widgetDefaults } from '../app/utils/boardConfig'
 
 const storage = new Map<string, string>()
 
@@ -165,5 +165,11 @@ describe('board undo', () => {
     expect(shouldDiscardForeignDashboardCache('account-b', 'account-b', false)).toBe(false)
     expect(shouldDiscardForeignDashboardCache(null, 'account-b', false)).toBe(false)
     expect(shouldDiscardForeignDashboardCache('account-a', 'account-b', true)).toBe(false)
+  })
+
+  it('only sends queued dashboard writes while the creating account is still connected', () => {
+    expect(canPersistDashboardSnapshot('account-a', 'account-a', true)).toBe(true)
+    expect(canPersistDashboardSnapshot('account-a', 'account-b', true)).toBe(false)
+    expect(canPersistDashboardSnapshot('account-a', 'account-a', false)).toBe(false)
   })
 })

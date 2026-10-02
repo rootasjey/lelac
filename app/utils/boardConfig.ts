@@ -19,6 +19,9 @@ export const dashboardStorageOwnerKey = 'lelac:dashboards-owner:v1'
 export function shouldDiscardForeignDashboardCache(localOwner: string | null, userId: string, hasStoredDashboards: boolean) {
   return Boolean(localOwner && localOwner !== userId && !hasStoredDashboards)
 }
+export function canPersistDashboardSnapshot(snapshotUserId: string, currentUserId: string, remoteEnabled: boolean) {
+  return Boolean(remoteEnabled && snapshotUserId && snapshotUserId === currentUserId)
+}
 export interface BoardWidget {
   id: string
   type: WidgetKind
