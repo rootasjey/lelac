@@ -1,4 +1,4 @@
-import { getAuthEnv, hashToken, validatePassword } from '../../../utils/auth'
+import { getAuthEnv, resetPasswordWithToken, validatePassword } from '../../../utils/auth'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<{ token?: unknown; password?: unknown }>(event)
@@ -8,18 +8,10 @@ export default defineEventHandler(async (event) => {
 
   const db = getAuthEnv(event).DB
   const now = new Date().toISOString()
-  const tokenHash = await hashToken(body.token)
   const passwordHash = await hashPassword(body.password)
   // Claim the token with one conditional write so concurrent submissions cannot both use it.
-  const token = await db.prepare(`
-    UPDATE auth_tokens SET consumed_at = ?
-    WHERE token_hash = ? AND purpose = 'reset-password' AND consumed_at IS NULL AND expires_at > ?
-    RETURNING user_id
-  `).bind(now, tokenHash, now).first<{ user_id: string }>()
+  const token = await resetPasswordWithToken(db, body.token, passwordHash, now)
   if (!token) throw createError({ statusCode: 400, statusMessage: 'Ce lien a expiré ou a déjà été utilisé. Demandez-en un nouveau.' })
-
-  await db.prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?')
-    .bind(passwordHash, now, token.user_id).run()
   await clearUserSession(event)
   return { ok: true, message: 'Votre mot de passe a été modifié. Vous pouvez vous connecter.' }
 })

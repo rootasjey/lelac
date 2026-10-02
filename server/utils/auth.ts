@@ -49,6 +49,30 @@ export async function hashToken(token: string): Promise<string> {
   return [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('')
 }
 
+export async function consumeAuthToken(db: Cloudflare.Env['DB'], token: string, purpose: AuthTokenPurpose, now = new Date().toISOString()) {
+  const tokenHash = await hashToken(token)
+  return db.prepare(`
+    UPDATE auth_tokens SET consumed_at = ?
+    WHERE token_hash = ? AND purpose = ? AND consumed_at IS NULL AND expires_at > ?
+    RETURNING user_id
+  `).bind(now, tokenHash, purpose, now).first<{ user_id: string }>()
+}
+
+export async function verifyUserEmailWithToken(db: Cloudflare.Env['DB'], token: string, now = new Date().toISOString()) {
+  const claimed = await consumeAuthToken(db, token, 'verify-email', now)
+  if (!claimed) return null
+  return db.prepare('UPDATE users SET email_verified_at = COALESCE(email_verified_at, ?), updated_at = ? WHERE id = ? RETURNING id, email')
+    .bind(now, now, claimed.user_id).first<{ id: string; email: string }>()
+}
+
+export async function resetPasswordWithToken(db: Cloudflare.Env['DB'], token: string, passwordHash: string, now = new Date().toISOString()) {
+  const claimed = await consumeAuthToken(db, token, 'reset-password', now)
+  if (!claimed) return null
+  await db.prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?')
+    .bind(passwordHash, now, claimed.user_id).run()
+  return claimed
+}
+
 export async function issueAuthToken(event: H3Event, userId: string, purpose: AuthTokenPurpose, lifetimeMs: number) {
   const db = getAuthEnv(event).DB
   const token = randomToken()

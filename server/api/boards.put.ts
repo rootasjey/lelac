@@ -1,4 +1,5 @@
 import { dashboardIds, parseBoard, type BoardConfig, type DashboardId } from '~/utils/boardConfig'
+import { saveDashboardRows } from '../utils/dashboardStorage'
 
 export default defineEventHandler(async (event) => {
   const { user } = await requireUserSession(event)
@@ -15,12 +16,7 @@ export default defineEventHandler(async (event) => {
     entries.push({ id, config: parsed })
   }
 
-  const now = new Date().toISOString()
   const db = getAuthEnv(event).DB
-  await db.batch(entries.map(({ id, config }) => db.prepare(`
-    INSERT INTO dashboards (user_id, dashboard_id, config_json, updated_at)
-    VALUES (?, ?, ?, ?)
-    ON CONFLICT(user_id, dashboard_id) DO UPDATE SET config_json = excluded.config_json, updated_at = excluded.updated_at
-  `).bind(user.id, id, JSON.stringify(config), now)))
+  await saveDashboardRows(db, user.id, entries)
   return { ok: true }
 })
