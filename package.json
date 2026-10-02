@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "nuxt build",
+    "ci": "bun run typecheck && bun run test --run && bun run build",
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "bun run build && wrangler dev",
