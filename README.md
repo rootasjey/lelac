@@ -63,19 +63,11 @@ Open email/password registration is implemented locally. Accounts must verify th
 
 ## Delivery status and next milestone
 
-The visual editing workflow, responsive dashboard views, settings page, light/dark/system themes, and versioned configuration import/export are implemented. The three dashboards and their cinema and streaming widgets are also in place. Account registration, verification, login, password reset, and per-user D1 dashboard storage are implemented for local development; production provisioning is tracked in the deployment checklist below.
+The visual editing workflow, responsive dashboard views, settings page, light/dark/system themes, and versioned configuration import/export are implemented. The three dashboards and their cinema and streaming widgets are also in place. Account registration, verification, login, password reset, and per-user D1 dashboard storage are deployed on Cloudflare Workers.
 
-The production D1 database `lelac-auth-prod` is provisioned in the EU jurisdiction, and migration `0001_auth_and_dashboards.sql` is applied. The Worker is not deployed yet: the account is on Workers Free, while Cloudflare Email Sending to arbitrary recipients requires Workers Paid. The plan starts at $5/month; do not open registration until email delivery works end to end.
+The production D1 database `lelac-auth-prod` is provisioned in the EU jurisdiction, and migration `0001_auth_and_dashboards.sql` is applied. Cloudflare Email Sending is enabled for `corpinot.cc`, with `noreply@corpinot.cc` as the configured sender. The Worker is live at <https://lelac.jerem-dev.workers.dev>; its session secret and public URL are configured.
 
-Complete production deployment in this order:
-
-1. Verify the production build and app routes in Wrangler's local Worker runtime.
-2. Enable an email-sending plan and onboard `corpinot.cc` in Cloudflare Email Service; use `noreply@corpinot.cc` as the sender.
-3. Set `NUXT_SESSION_PASSWORD` (at least 32 characters) and `NUXT_PUBLIC_APP_URL` to the deployed public URL.
-4. Deploy with `bun run deploy`, then verify registration, email verification, login, password reset, per-user board isolation, and save/reload on Workers before opening registration to public use.
-5. Add operational safeguards such as backups, account deletion, and monitoring based on deployment needs.
-
-The Worker production build, local D1 migrations, production D1 migration, and Wrangler production dry run are verified. Dashboard APIs require an authenticated session and validate saved configurations. Sender-domain onboarding, email delivery, deployment, and end-to-end verification remain outstanding. Do not expose registration publicly until those production prerequisites are complete.
+The remaining deployment milestone is end-to-end verification: test email delivery, registration and email verification, login, password reset, per-user board isolation, and save/reload on Workers before broadly sharing the registration URL. The production build, typecheck, test suite, D1 migration, Wrangler dry run, and deployed login/registration pages have been verified. Add operational safeguards such as backups, account deletion, and monitoring based on deployment needs.
 
 ## Current dashboard
 

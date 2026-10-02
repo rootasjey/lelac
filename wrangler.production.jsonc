@@ -4,6 +4,9 @@
   "main": "./.output/server/index.mjs",
   "compatibility_date": "2026-09-21",
   "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "NUXT_PUBLIC_APP_URL": "https://lelac.jerem-dev.workers.dev"
+  },
   "assets": {
     "directory": "./.output/public/",
     "binding": "ASSETS"
