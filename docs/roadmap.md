@@ -14,7 +14,8 @@ This file tracks product milestones. `README.md` describes the current architect
 - [x] Keep local recovery copies and authenticated per-user D1 sync aligned.
 - [x] Verify account isolation against the changed D1 API with two users on a local Worker and disposable D1 database.
 - [ ] Verify desktop/mobile management UI and route navigation in an authenticated browser, including an import/export round trip.
-- [ ] Apply the D1 migration in production after confirming the deployed database snapshot/recovery point, then deploy and verify the account flows.
+- [x] Confirm a current Time Travel recovery bookmark is available for the production D1 database before migration.
+- [ ] Apply the pending D1 migration in production, deploy and verify the account flows after authorization.
 
 ## Shipped foundations
 
