@@ -2,6 +2,7 @@
 import { DatabaseSync } from 'node:sqlite'
 import * as h3 from 'h3'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { defaultDashboard, defaultDashboardDefinitions } from '../app/utils/boardConfig'
 
 vi.mock('nitropack/runtime', () => ({
   useRuntimeConfig: (event?: h3.H3Event) => event?.context.nitro?.runtimeConfig ?? {
@@ -29,6 +30,7 @@ function installAuthGlobals() {
     sessionClears.push(event)
   })
   vi.stubGlobal('requireUserSession', async () => ({ user: authenticatedTestUser }))
+  vi.stubGlobal('getAuthEnv', (event: h3.H3Event) => (event.context.cloudflare as { env: Cloudflare.Env }).env)
   vi.stubGlobal('useRuntimeConfig', (event?: h3.H3Event) => event?.context.nitro?.runtimeConfig ?? {
     session: { password: 'test-session-secret-that-is-long-enough-for-auth-utils' },
     public: { appUrl: 'https://lelac.test' },
@@ -36,13 +38,15 @@ function installAuthGlobals() {
 }
 
 installAuthGlobals()
-const [registerModule, loginModule, resetModule, resetCompleteModule, verifyModule, accountModule] = await Promise.all([
+const [registerModule, loginModule, resetModule, resetCompleteModule, verifyModule, accountModule, boardsGetModule, boardsPutModule] = await Promise.all([
   import('../server/api/auth/register.post'),
   import('../server/api/auth/login.post'),
   import('../server/api/auth/password-reset.post'),
   import('../server/api/auth/password-reset/complete.post'),
   import('../server/api/auth/verify.get'),
   import('../server/api/auth/account.delete'),
+  import('../server/api/boards.get'),
+  import('../server/api/boards.put'),
 ])
 const registerHandler = registerModule.default
 const loginHandler = loginModule.default
@@ -50,6 +54,8 @@ const resetHandler = resetModule.default
 const resetCompleteHandler = resetCompleteModule.default
 const verifyHandler = verifyModule.default
 const accountHandler = accountModule.default
+const boardsGetHandler = boardsGetModule.default
+const boardsPutHandler = boardsPutModule.default
 const { hashToken } = await import('../server/utils/auth')
 
 class SQLiteD1Statement {
@@ -81,6 +87,12 @@ function createD1TestDatabase() {
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       dashboard_id TEXT NOT NULL, config_json TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (user_id, dashboard_id)
+    );
+    CREATE TABLE dashboard_definitions (
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      dashboard_id TEXT NOT NULL, title TEXT NOT NULL, position INTEGER NOT NULL CHECK (position >= 0),
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, dashboard_id), UNIQUE (user_id, position)
     );
   `)
   const d1 = {
@@ -117,6 +129,11 @@ function createAuthApi(db: Cloudflare.Env['DB']) {
   app.use('/api/auth/password-reset', resetHandler)
   app.use('/api/auth/verify', verifyHandler)
   app.use('/api/auth/account', accountHandler)
+  app.use('/api/boards', h3.defineEventHandler(async (event) => {
+    if (event.method === 'GET') return boardsGetHandler(event)
+    if (event.method === 'PUT') return boardsPutHandler(event)
+    throw h3.createError({ statusCode: 405, statusMessage: 'Method not allowed' })
+  }))
   const handle = h3.toWebHandler(app)
   return (path: string, body?: unknown, method = 'POST') => handle(new Request(`https://lelac.test${path}`, {
     method,
@@ -306,5 +323,56 @@ describe('auth API', () => {
     expect(database.d1.prepare('SELECT COUNT(*) AS count FROM dashboards').first<{ count: number }>()?.count).toBe(0)
     expect(database.d1.prepare('SELECT COUNT(*) AS count FROM auth_tokens').first<{ count: number }>()?.count).toBe(0)
     expect(sessionClears).toHaveLength(1)
+  })
+
+  it('requires a session and rejects invalid dashboard collections before writing', async () => {
+    expect((await request('/api/boards', undefined, 'GET')).status).toBe(401)
+    expect((await request('/api/boards', { dashboards: [] }, 'PUT')).status).toBe(401)
+
+    database.d1.prepare('INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)')
+      .bind('board-owner', 'board-owner@example.com', 'test-hash:password').run()
+    authenticatedTestUser = { id: 'board-owner', email: 'board-owner@example.com' }
+
+    const invalidDefinitions = await request('/api/boards', { dashboards: [{ id: 'daily', title: ' ', order: 0, config: defaultDashboard('daily') }] }, 'PUT')
+    expect(invalidDefinitions.status).toBe(400)
+
+    const invalidConfig = await request('/api/boards', { dashboards: [{ id: 'daily', title: 'Quotidien', order: 0, config: { version: 99, widgets: [] } }] }, 'PUT')
+    expect(invalidConfig.status).toBe(400)
+    expect(database.d1.prepare('SELECT COUNT(*) AS count FROM dashboard_definitions').first<{ count: number }>()?.count).toBe(0)
+    expect(database.d1.prepare('SELECT COUNT(*) AS count FROM dashboards').first<{ count: number }>()?.count).toBe(0)
+  })
+
+  it('persists ordered custom dashboards per account and reads them back', async () => {
+    database.d1.prepare('INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?), (?, ?, ?)')
+      .bind('board-owner-a', 'board-a@example.com', 'test-hash:password', 'board-owner-b', 'board-b@example.com', 'test-hash:password').run()
+    authenticatedTestUser = { id: 'board-owner-a', email: 'board-a@example.com' }
+
+    const customId = '123e4567-e89b-42d3-a456-426614174000'
+    const saved = await request('/api/boards', { dashboards: [
+      { ...defaultDashboardDefinitions[0]!, order: 0, config: defaultDashboard('daily') },
+      { id: customId, title: 'Voyages', order: 1, config: defaultDashboard(customId) },
+    ] }, 'PUT')
+    expect(saved.status).toBe(200)
+    expect(await saved.json()).toEqual({ ok: true })
+
+    const ownerRead = await request('/api/boards', undefined, 'GET')
+    expect(ownerRead.status).toBe(200)
+    expect(await ownerRead.json()).toMatchObject({
+      hasStoredDashboards: true,
+      dashboards: [
+        { id: 'daily', title: 'Quotidien', order: 0 },
+        { id: customId, title: 'Voyages', order: 1 },
+      ],
+    })
+
+    authenticatedTestUser = { id: 'board-owner-b', email: 'board-b@example.com' }
+    const otherRead = await request('/api/boards', undefined, 'GET')
+    expect(otherRead.status).toBe(200)
+    expect(await otherRead.json()).toMatchObject({
+      hasStoredDashboards: false,
+      dashboards: defaultDashboardDefinitions,
+    })
+    expect(database.d1.prepare('SELECT COUNT(*) AS count FROM dashboard_definitions WHERE user_id = ?')
+      .bind('board-owner-b').first<{ count: number }>()?.count).toBe(0)
   })
 })
