@@ -3,7 +3,7 @@
     <div class="board-shell">
       <header class="board-header">
         <NuxtLink to="/" class="brand">
-          <span class="brand-wordmark">Trame<span aria-hidden="true">↘</span></span>
+          <span class="brand-wordmark">Le Lac<span aria-hidden="true">↘</span></span>
           <span class="brand-tagline">Composez votre quotidien</span>
         </NuxtLink>
         <nav class="dashboard-tabs" aria-label="Tableaux">

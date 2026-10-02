@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
   if (user?.email_verified_at) {
     const token = await issueAuthToken(event, user.id, 'reset-password', resetLifetime)
     const url = buildAuthLink(event, '/reset-password', token)
-    await sendAuthEmail(event, { to: email, subject: 'Réinitialisez votre mot de passe · Trame', url, action: 'choisir un nouveau mot de passe' })
+    await sendAuthEmail(event, { to: email, subject: 'Réinitialisez votre mot de passe · Le Lac', url, action: 'choisir un nouveau mot de passe' })
   }
   return { ok: true, message: 'Si un compte vérifié correspond à cette adresse, un lien de réinitialisation va être envoyé.' }
 })

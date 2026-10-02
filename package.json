@@ -1,5 +1,5 @@
 {
-  "name": "trame",
+  "name": "lelac",
   "type": "module",
   "private": true,
   "scripts": {
@@ -22,7 +22,6 @@
     "@una-ui/nuxt": "^1.0.0-alpha.17",
     "@unocss/nuxt": "^66.7.0",
     "grid-layout-plus": "2.0.0-beta.0",
-    "js-yaml": "^4.2.0",
     "nuxt": "^4.4.6",
     "nuxt-auth-utils": "^0.5.30",
     "vue": "^3.5.34",
@@ -32,7 +31,6 @@
   "devDependencies": {
     "@iconify-json/lucide": "^1.2.111",
     "@nuxt/test-utils": "^4.0.3",
-    "@types/js-yaml": "^4.0.9",
     "fast-xml-parser": "^5.11.1",
     "happy-dom": "^20.9.0",
     "typescript": "5.9.3",

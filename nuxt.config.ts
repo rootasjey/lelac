@@ -16,7 +16,7 @@ export default defineNuxtConfig({
     preference: 'dark',
     fallback: 'dark',
     classSuffix: '',
-    storageKey: 'trame-color-mode',
+    storageKey: 'lelac-color-mode',
   },
 
   components: [
@@ -27,7 +27,7 @@ export default defineNuxtConfig({
   
   app: {
     head: {
-      title: 'Trame',
+      title: 'Le Lac',
       meta: [
         { name: 'description', content: 'Composez votre quotidien en réunissant actualités, vidéos et informations dans des tableaux personnalisés.' },
       ],

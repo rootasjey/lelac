@@ -75,7 +75,7 @@ export async function sendAuthEmail(event: H3Event, input: { to: string; subject
   }
   await env.EMAIL.send({
     to: input.to,
-    from: { email: 'noreply@corpinot.cc', name: 'Trame' },
+    from: { email: 'noreply@corpinot.cc', name: 'Le Lac' },
     subject: input.subject,
     html,
     text,
@@ -127,7 +127,7 @@ export function buildAuthLink(event: H3Event, path: string, token: string) {
   const cloudflareEnv = event.context.cloudflare?.env as (Cloudflare.Env & { NUXT_PUBLIC_APP_URL?: string }) | undefined
   const configuredBase = cloudflareEnv?.NUXT_PUBLIC_APP_URL || useRuntimeConfig(event).public.appUrl
   const origin = configuredBase || (import.meta.dev ? getRequestURL(event).origin : '')
-  if (!origin) throw createError({ statusCode: 503, statusMessage: 'L’adresse publique de Trame n’est pas configurée.' })
+  if (!origin) throw createError({ statusCode: 503, statusMessage: 'L’adresse publique de l’application n’est pas configurée.' })
   const url = new URL(path, origin)
   url.searchParams.set('token', token)
   return url.toString()

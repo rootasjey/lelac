@@ -27,7 +27,7 @@ export interface BoardWidget {
   cinemaArea?: LegacyCinemaAreaId
 }
 export interface BoardConfig { version: 1; widgets: BoardWidget[]; options?: Record<string, unknown> }
-export const boardStorageKey = 'trame:board:v1'
+export const boardStorageKey = 'lelac:board:v1'
 export function dashboardStorageKey(id: DashboardId) {
   return id === 'daily' ? boardStorageKey : `${boardStorageKey}:${id}`
 }

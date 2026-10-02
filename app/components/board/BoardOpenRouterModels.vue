@@ -25,7 +25,7 @@ const sortReady = ref(false)
 let activeSortStorageKey: string | null = null
 const sortedModels = computed(() => sortOpenRouterModels(models.value, sortKey.value, sortDirection.value))
 const sortStorageKey = computed(() => props.dashboardId && props.widgetId
-  ? `trame:openrouter-sort:v1:${encodeURIComponent(props.dashboardId)}:${encodeURIComponent(props.widgetId)}:${props.sortScope}`
+  ? `lelac:openrouter-sort:v1:${encodeURIComponent(props.dashboardId)}:${encodeURIComponent(props.widgetId)}:${props.sortScope}`
   : null)
 const showThroughputColumn = computed(() => isTableLayout.value && value.value?.throughputEnabled === true && bodyWidth.value >= 980)
 const visibleModels = computed(() => {

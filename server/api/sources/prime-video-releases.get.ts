@@ -8,7 +8,7 @@ export default defineCachedEventHandler(async (): Promise<PrimeVideoReleasesResu
       signal: AbortSignal.timeout(10_000),
       headers: {
         Accept: 'text/html,application/xhtml+xml',
-        'User-Agent': 'Trame streaming calendar widget (Prime Video France source links)',
+        'User-Agent': 'Le Lac streaming calendar widget (Prime Video France source links)',
       },
     })
     if (!response.ok) throw new Error(`Prime Video returned HTTP ${response.status}`)

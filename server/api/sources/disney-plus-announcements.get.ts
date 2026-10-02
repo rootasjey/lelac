@@ -8,7 +8,7 @@ export default defineCachedEventHandler(async (): Promise<DisneyPlusAnnouncement
       signal: AbortSignal.timeout(10_000),
       headers: {
         Accept: 'text/html,application/xhtml+xml',
-        'User-Agent': 'Trame Disney+ announcements widget (official source links)',
+        'User-Agent': 'Le Lac Disney+ announcements widget (official source links)',
       },
     })
     if (!response.ok) throw new Error(`Disney France returned HTTP ${response.status}`)
@@ -22,7 +22,7 @@ export default defineCachedEventHandler(async (): Promise<DisneyPlusAnnouncement
           signal: AbortSignal.timeout(4_500),
           headers: {
             Accept: 'text/html,application/xhtml+xml',
-            'User-Agent': 'Trame Disney+ announcements widget (short source excerpt and attribution)',
+            'User-Agent': 'Le Lac Disney+ announcements widget (short source excerpt and attribution)',
           },
         })
         if (!article.ok) return announcement

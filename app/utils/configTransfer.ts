@@ -1,7 +1,7 @@
 import { dashboardIds, defaultDashboard, parseBoard } from '~/utils/boardConfig'
 import type { BoardConfig, DashboardId } from '~/utils/boardConfig'
 
-export const CONFIG_FILE_FORMAT = 'encascade-configuration'
+export const CONFIG_FILE_FORMAT = 'lelac-configuration'
 export const CONFIG_FILE_VERSION = 1
 
 export type ThemePreference = 'system' | 'dark' | 'light'

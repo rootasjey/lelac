@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
       {
         signal: controller.signal,
         headers: {
-          'User-Agent': 'Trame/1.0 (dashboard app)',
+          'User-Agent': 'Le Lac/1.0 (dashboard app)',
           'Accept': 'application/json',
         },
       }

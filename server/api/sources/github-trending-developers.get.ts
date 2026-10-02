@@ -22,7 +22,7 @@ export default defineCachedEventHandler(async (event) => {
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       headers: {
         Accept: 'text/html,application/xhtml+xml',
-        'User-Agent': 'Trame GitHub Trending Developers widget',
+        'User-Agent': 'Le Lac GitHub Trending Developers widget',
       },
     })
     if (!response.ok) throw new Error(`GitHub responded with status ${response.status}`)

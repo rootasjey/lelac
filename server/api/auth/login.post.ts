@@ -1,6 +1,6 @@
 import { enforceAuthRateLimit, getAuthEnv, normalizeEmail, type AuthUserRow } from '../../utils/auth'
 
-const dummyPasswordHash = hashPassword('trame-invalid-login-sentinel')
+const dummyPasswordHash = hashPassword('lelac-invalid-login-sentinel')
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<{ email?: unknown; password?: unknown }>(event)

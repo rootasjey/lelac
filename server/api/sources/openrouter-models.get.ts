@@ -10,7 +10,7 @@ const cachedHandler = defineCachedEventHandler(async (event) => {
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       headers: {
         Accept: 'application/json',
-        'User-Agent': 'Trame OpenRouter models widget',
+        'User-Agent': 'Le Lac OpenRouter models widget',
       },
     })
     if (!response.ok) throw new Error(`OpenRouter responded with status ${response.status}`)
@@ -33,7 +33,7 @@ const cachedHandler = defineCachedEventHandler(async (event) => {
             headers: {
               Accept: 'application/json',
               Authorization: `Bearer ${apiKey}`,
-              'User-Agent': 'Trame OpenRouter models widget',
+              'User-Agent': 'Le Lac OpenRouter models widget',
             },
           })
           if (!endpointResponse.ok) return [model.id, null] as const

@@ -12,13 +12,13 @@ const errorMessage = ref('')
 const statusMessage = ref('')
 
 const copy = computed(() => ({
-  login: { title: 'Connexion', intro: 'Retrouvez vos tableaux Trame.', submit: 'Se connecter' },
+  login: { title: 'Connexion', intro: 'Retrouvez vos tableaux dans Le Lac.', submit: 'Se connecter' },
   register: { title: 'Créer un compte', intro: 'Créez un compte pour retrouver vos tableaux partout.', submit: 'Créer mon compte' },
   forgot: { title: 'Mot de passe oublié', intro: 'Nous vous enverrons un lien pour en choisir un nouveau.', submit: 'Envoyer le lien' },
   reset: { title: 'Nouveau mot de passe', intro: 'Choisissez un nouveau mot de passe pour votre compte.', submit: 'Modifier le mot de passe' },
 } as const)[props.mode])
 
-useHead(() => ({ title: `${copy.value.title} — Trame` }))
+useHead(() => ({ title: `${copy.value.title} — Le Lac` }))
 
 async function submit() {
   errorMessage.value = ''
@@ -71,7 +71,7 @@ async function submit() {
 <template>
   <main class="auth-page">
     <div class="auth-shell">
-      <NuxtLink to="/" class="auth-brand">Trame<span aria-hidden="true">↘</span></NuxtLink>
+      <NuxtLink to="/" class="auth-brand">Le Lac<span aria-hidden="true">↘</span></NuxtLink>
       <section class="auth-card" aria-labelledby="auth-title">
         <p class="auth-kicker">VOTRE ESPACE PERSONNEL</p>
         <h1 id="auth-title">{{ copy.title }}</h1>

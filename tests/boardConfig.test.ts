@@ -15,8 +15,8 @@ describe('board configuration', () => {
   })
 
   it('provides a separate Tech dashboard without changing the legacy daily storage key', () => {
-    expect(dashboardStorageKey('daily')).toBe('trame:board:v1')
-    expect(dashboardStorageKey('tech')).toBe('trame:board:v1:tech')
+    expect(dashboardStorageKey('daily')).toBe('lelac:board:v1')
+    expect(dashboardStorageKey('tech')).toBe('lelac:board:v1:tech')
     const tech = defaultDashboard('tech')
     expect(tech.widgets).toEqual([expect.objectContaining({
       id: 'google-developers',
@@ -73,7 +73,7 @@ describe('board configuration', () => {
   })
 
   it('provides a Cinema dashboard with local screenings, trailers, and official streaming calendars by default', () => {
-    expect(dashboardStorageKey('cinema')).toBe('trame:board:v1:cinema')
+    expect(dashboardStorageKey('cinema')).toBe('lelac:board:v1:cinema')
     expect(defaultDashboard('cinema').widgets).toEqual([
       expect.objectContaining({
         id: 'cinema-programme',

@@ -31,6 +31,6 @@ export default defineEventHandler(async (event) => {
 
   const token = await issueAuthToken(event, userId, 'verify-email', verificationLifetime)
   const url = buildAuthLink(event, '/api/auth/verify', token)
-  await sendAuthEmail(event, { to: email, subject: 'Confirmez votre adresse e-mail · Trame', url, action: 'confirmer votre adresse e-mail' })
+  await sendAuthEmail(event, { to: email, subject: 'Confirmez votre adresse e-mail · Le Lac', url, action: 'confirmer votre adresse e-mail' })
   return { ok: true, message: genericRegistrationMessage }
 })

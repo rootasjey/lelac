@@ -1,4 +1,4 @@
-# Trame
+# Le Lac
 
 > Composez votre quotidien
 
@@ -6,9 +6,9 @@ Personal dashboards for your interests, composed and edited visually. Built with
 
 ## Product direction
 
-Trame brings news, videos and everyday information into calm, readable dashboards. Its main argument is visual editing: add a source, configure its widget and rearrange the page directly in the app. Deployment to your own Cloudflare Workers account is the second core goal.
+Le Lac brings news, videos and everyday information into calm, readable dashboards. Its main argument is visual editing: add a source, configure its widget and rearrange the page directly in the app. Deployment to your own Cloudflare Workers account is the second core goal.
 
-Glance is the visual reference for composition, spacing, typography and restrained color. Trame accepts additional JavaScript and runtime overhead in exchange for a better editing experience. Responsiveness and sensible resource usage still matter; matching Glance's binary size or performance is not a release requirement.
+Glance is the visual reference for composition, spacing, typography and restrained color. Le Lac accepts additional JavaScript and runtime overhead in exchange for a better editing experience. Responsiveness and sensible resource usage still matter; matching Glance's binary size or performance is not a release requirement.
 
 ## Initial scope
 
@@ -20,15 +20,15 @@ Glance is the visual reference for composition, spacing, typography and restrain
 
 Prioritize complete everyday workflows over the number of widget types.
 
-### Intended dashboards
+### Dashboards
 
 | Dashboard | Intended content |
 |---|---|
 | Daily | Selected RSS news, local weather, clocks for several cities |
 | Tech | RSS feeds, weekly GitHub trends, recent uploads from selected YouTube channels |
-| Cinema | Weekly film releases for a selected country |
+| Cinema | Local screenings, upcoming theatrical programming, streaming announcements and curated trailers |
 
-The first polished dashboard should establish the design with RSS, weather and world clocks. YouTube, GitHub trends and cinema follow once that foundation works reliably. Define the GitHub trend source and ranking period explicitly; tracked repository releases are a separate feature. Cinema releases and local screening schedules are also separate scopes.
+The three dashboards now share the same visual editing foundation. Keep GitHub trend rankings distinct from tracked repository releases, and keep local cinema screenings distinct from upcoming theatrical programming and streaming announcements.
 
 ## Design and editing
 
@@ -43,9 +43,9 @@ The first polished dashboard should establish the design with RSS, weather and w
 
 ### Drag-and-drop approach
 
-Use a Vue package for pointer interactions and build Trame's editing UI around it. Do not implement a custom drag engine.
+Use a Vue package for pointer interactions and build Le Lac's editing UI around it. Do not implement a custom drag engine.
 
-The main dashboard now uses `grid-layout-plus` pinned to `2.0.0-beta.0`, with a 12-column layout and fixed user-selected heights. Keep grid configuration objects stable during interactions. The earlier `vue-draggable-plus` components remain unused by the main route.
+The main dashboard uses `grid-layout-plus` pinned to `2.0.0-beta.0`, with a 12-column layout and fixed user-selected heights. Keep grid configuration objects stable during interactions. Widget settings use `vue-draggable-plus` to reorder clock cities.
 
 Widgets have independent IDs, configuration and geometry. The app persists its own versioned model rather than the package's internal state. RSS capacity is measured from rendered row heights; a separate reading dialog exposes the rest of the feed.
 
@@ -54,18 +54,32 @@ Widgets have independent IDs, configuration and geometry. The app persists its o
 - **UI:** Nuxt 4, Vue 3, TypeScript, UnaUI and UnoCSS.
 - **State:** Pinia with stable widget identifiers and validated configuration.
 - **Deployment target:** Nuxt/Nitro on Cloudflare Workers.
-- **Planned persistence:** D1 for dashboard and widget configuration; browser storage remains the current prototype mechanism.
+- **Persistence:** D1 stores accounts and per-user dashboard/widget configuration; browser storage remains a local recovery copy.
 - **Data fetching:** server-side source adapters with appropriate caching, timeouts and independent widget failure handling. Choose a cache backend when the first real integrations establish the requirements.
 
 Keep the architecture focused on Workers. NuxtHub can be evaluated as an integration convenience; it is not a prerequisite for the product. There is no initial multi-platform storage abstraction.
 
-The first deployment is for personal use. Protect configuration writes before exposing a deployed instance; a multi-user account system is outside the initial scope.
+Open email/password registration is implemented locally. Accounts must verify their email address before signing in. OAuth and passwordless email links remain deferred.
+
+## Delivery status and next milestone
+
+The visual editing workflow, responsive dashboard views, settings page, light/dark/system themes, and versioned configuration import/export are implemented. The three dashboards and their cinema and streaming widgets are also in place. Account registration, verification, login, password reset, and per-user D1 dashboard storage are implemented for local development; production D1 and email-service resources are not provisioned.
+
+The next milestone is to prepare and verify authenticated production deployment. Complete it in this order:
+
+1. Verify the production build and app routes in Wrangler's local Worker runtime.
+2. Provision and bind the production D1 database, then apply the checked-in migrations.
+3. Configure `NUXT_SESSION_PASSWORD`, `NUXT_PUBLIC_APP_URL`, and Cloudflare Email Service with an approved sender on the verified `corpinot.cc` domain.
+4. Verify registration, email verification, login, password reset, per-user board isolation, and save/reload on Workers before opening registration to public use.
+5. Add operational safeguards such as backups, account deletion, and monitoring based on deployment needs.
+
+The Worker production build, local D1 migrations, and a local Wrangler preview are verified. Dashboard APIs require an authenticated session and validate saved configurations. Production resources, sender-domain onboarding, email delivery, and deployment verification remain outstanding. Do not expose registration publicly until those production prerequisites and an end-to-end test are complete.
 
 ## Current dashboard
 
-The `/` route opens Quotidien; the Tech tab opens a separate dashboard seeded with the Google Developers YouTube channel, GitHub Blog and Cloudflare Workers AI changelog RSS feeds, plus separate GitHub Trending repository and developer widgets. Hacker News is available in the widget catalogue but is not forced into the default Tech layout. An untouched older Tech seed is upgraded with those widgets; customized Tech boards are preserved. Each GitHub trend widget has independent period and language settings. Both boards support adding, configuring, moving, resizing and removing RSS, weather, world-clock, YouTube, GitHub Trending and Hacker News widgets. Undo covers layout, settings, additions and deletions within the current session. A cancelled addition leaves no provisional widget.
+The `/` route opens Quotidien; Tech and Cinéma open separate dashboards. Tech is seeded with Google Developers videos, GitHub Blog and Cloudflare Workers AI RSS feeds, GitHub Trending repositories and developers, and recent OpenRouter models. Cinéma includes SCARE screenings and upcoming programming, a curated FilmsActu trailer feed, and Netflix, Apple TV, Prime Video and Disney+ release widgets. The catalogue also offers weather, clocks and Hacker News. Each dashboard supports adding, configuring, moving, resizing and removing widgets. Undo covers layout, settings, additions and deletions within the current session. A cancelled addition leaves no provisional widget.
 
-- Quotidien keeps its configuration under `trame:board:v1`; Tech uses `trame:board:v1:tech`. Legacy `distill-config` and earlier demonstration layouts are not migrated.
+- Quotidien keeps its configuration under `lelac:board:v1`; Tech uses `lelac:board:v1:tech`. Earlier demonstration layouts are not migrated.
 - Desktop supports drag/resize and keyboard-accessible adjustment controls. Mobile stacks widgets in desktop reading order and supports adding, configuring and removing widgets. Geometry editing remains desktop-only.
 - RSS and Atom feeds are fetched and parsed directly by the server from public HTTPS URLs; redirects are checked, responses are limited to 2 MiB and 12 seconds, and results are cached for 5 minutes. No conversion service or API key is required. Articles link to their original sources.
 - YouTube channel feeds use the official YouTube Data API through a server endpoint. Set `NUXT_YOUTUBE_API_KEY` in a local `.env` file for `bun run dev`, or as a Cloudflare Worker secret for deployment. The key never reaches the browser; recent video metadata is cached for 15 minutes.
@@ -75,20 +89,20 @@ The `/` route opens Quotidien; the Tech tab opens a separate dashboard seeded wi
 - OpenRouter model metadata is public. To show the optional recent throughput comparison, set `NUXT_OPENROUTER_API_KEY` as a server-only secret; the app reads provider `p50` throughput over 30 minutes for up to the 12 newest models, and shows the column only in sufficiently wide tables. Without a key, the throughput column stays hidden; when the key is present but a model has no reported measurement, its cell shows a dash. The key is never sent to the browser.
 - Weather and city search use Open-Meteo. Search results must be explicitly selected. Clocks accept one to three named IANA timezones.
 - Nitro source endpoints have timeouts and caches (RSS: 5 minutes; weather: 10 minutes; city search: 1 hour). Visible widgets refresh every 10 minutes. Manual refresh reads the same server cache. Previously loaded data remains visible on refresh errors during the session; source changes clear the previous source.
-- Grid rendering starts after client mounting. Nitro and Wrangler are configured for Cloudflare Workers; production deployment, creating or renaming dashboards, YAML editing and D1 persistence remain unfinished. Legacy widgets are not offered in the new catalog.
+- Grid rendering starts after client mounting. Nitro and Wrangler are configured for Cloudflare Workers; production deployment, creating or renaming dashboards, and YAML editing remain unfinished. Legacy widgets are not offered in the new catalog.
 
 ## Delivery order
 
-1. **Polished reference dashboard:** coherent Glance-inspired design, representative real content, readable mobile layout and reliable RSS/weather/clock widgets.
-2. **Complete visual workflow:** dashboard navigation, add/configure/move/remove widgets, undo, accessible move controls and reload persistence. Evaluate the layout package only against concrete needs.
-3. **Workers runtime and persistence:** verify the app in Wrangler locally and in production, add durable configuration storage, protect writes and review source caching and failure states.
-4. **Expand useful content:** country-specific cinema releases and additional daily sources. Tech now includes independent repository and developer trends.
+1. **Polished reference dashboard:** implemented locally with representative content and readable mobile layouts.
+2. **Complete visual workflow:** implemented locally, including navigation, add/configure/move/resize/remove, undo, accessible adjustment controls, themes and portable configuration backups. Browser storage still limits persistence to one browser.
+3. **Workers runtime and durable persistence:** local Worker build/preview, D1 schema, authenticated account flows and protected configuration endpoints implemented; production provisioning and verification remain.
+4. **Useful content:** the current Tech and Cinema boards include independent trends, screenings, trailers and streaming announcements. Expand sources when a reliable source adds clear value.
 
 Each milestone should be usable before expanding the scope. Validate desktop and mobile rendering, the full edit/save/reload flow, and the actual Workers runtime before claiming those paths are complete.
 
 ## Deferred
 
-Docker and Umbrel packaging, plugin marketplace, third-party plugin sandbox, plugin SDK, multi-user accounts and public dashboard sharing are outside the initial scope. Revisit them only when actual usage justifies the cost.
+OAuth, passwordless magic links, account deletion, public dashboard sharing, Docker and Umbrel packaging, plugin marketplace, third-party plugin sandbox, plugin SDK, and YAML editing are deferred. Revisit them only when actual usage justifies the cost.
 
 ## Local development
 
@@ -114,6 +128,8 @@ NUXT_OPENROUTER_API_KEY=your-key
 For a deployed Worker, add it with `bunx wrangler secret put NUXT_OPENROUTER_API_KEY`.
 
 `bun run dev` starts Nuxt locally. `bun run build` produces the Cloudflare Worker artifact; `bun run preview` builds it and starts Wrangler locally. `bun run deploy` builds and deploys to Cloudflare Workers. Check types with `bun run typecheck` and run tests once with `bun run test --run`.
+
+Authentication requires a `NUXT_SESSION_PASSWORD` of at least 32 characters. For local Worker auth testing, build first, apply D1 migrations with `bunx wrangler d1 migrations apply lelac-auth-local --local`, then set a local-only `NUXT_PUBLIC_APP_URL` and `NUXT_SESSION_PASSWORD` before `bunx wrangler dev --local`. Wrangler's local email binding is not a production delivery setup. Production also requires a provisioned D1 database, an onboarded sender domain, and Cloudflare Email Service configuration.
 
 ## References
 
