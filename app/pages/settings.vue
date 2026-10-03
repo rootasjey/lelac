@@ -182,7 +182,7 @@ function importConfiguration() {
   <main class="settings-page">
     <div class="settings-shell">
       <header class="settings-header">
-        <NuxtLink to="/" class="settings-brand">Le Lac<span>↘</span></NuxtLink>
+        <NuxtLink to="/" class="settings-brand">Le Lac</NuxtLink>
         <NuxtLink :to="returnToBoard" class="settings-back"><span class="i-ph-arrow-left" aria-hidden="true" />Retour au tableau</NuxtLink>
       </header>
 
@@ -335,7 +335,6 @@ function importConfiguration() {
 .settings-shell { width: min(100%, 1080px); margin-inline: auto; padding: 24px 36px 96px; }
 .settings-header { display: flex; min-height: 62px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--board-border); }
 .settings-brand { color: var(--board-text); font: 20px/1 'SF Mono', 'Cascadia Code', Consolas, monospace; letter-spacing: -.06em; text-decoration: none; }
-.settings-brand span { margin-left: 8px; color: var(--board-accent); }
 .settings-back { display: inline-flex; min-height: 40px; align-items: center; gap: 8px; color: var(--board-text-soft); font: 12px/1 'SF Mono', 'Cascadia Code', Consolas, monospace; text-decoration: none; }
 .settings-back:hover { color: var(--board-accent); }
 .settings-content { width: min(100%, 760px); margin: 64px auto 0; }
