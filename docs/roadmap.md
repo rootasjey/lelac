@@ -2,9 +2,9 @@
 
 This file tracks product milestones. `README.md` describes the current architecture and shipped workflows; this page records what is complete and what remains to verify.
 
-## Current position — user-managed dashboards
+## Current position — dashboard management polish
 
-**In progress.** Turn the three fixed tabs into a user-owned collection while preserving existing dashboards and account data.
+**Core milestone complete.** User-owned dashboards replace the original fixed tabs while preserving stable IDs, existing configuration, and per-account data. This pass adds quick per-tab rename/delete actions and drag-to-reorder in the management dialog; browser verification of these new interactions remains.
 
 - [x] Define the collection model and versioned export format that can accept future dashboard and widget types.
 - [x] Keep old version-1 configuration exports importable.
@@ -16,7 +16,10 @@ This file tracks product milestones. `README.md` describes the current architect
 - [x] Verify desktop/mobile management UI and route navigation in an authenticated browser, including an import/export round trip on an isolated local D1 database.
 - [x] Confirm a current Time Travel recovery bookmark is available for the production D1 database before migration.
 - [x] Apply the pending D1 migration in production and deploy after authorization; verify the public login/home routes and that the boards API rejects unauthenticated requests.
-- [ ] Verify authenticated account flows against production using a designated test account; local account isolation and browser workflows are covered with disposable data.
+- [x] Verify authenticated account flows against production using designated test accounts; local account isolation and browser workflows are covered with disposable data.
+- [x] Add an add-dashboard action and per-tab rename/delete actions with confirmation for deletion.
+- [x] Support pointer drag-to-reorder in the management dialog while retaining keyboard-accessible move controls.
+- [ ] Verify the new tab menu and dialog drag interaction in the authenticated browser, including touch-sized layouts.
 
 ## Shipped foundations
 
@@ -29,9 +32,9 @@ This file tracks product milestones. `README.md` describes the current architect
 
 ## After this milestone
 
-1. **Review the new dashboard workflow in production.** Tune naming, ordering and reset behavior from actual use before expanding the catalog.
+1. **Finish browser review of dashboard management polish.** Check hover, keyboard focus, deletion confirmation, drag ordering and small-screen behavior.
 2. **Address usability gaps surfaced by that review.** Prefer concrete accessibility, mobile, recovery and onboarding issues over speculative features.
-3. **Choose the next product feature from usage.** Candidate areas include additional reliable content sources and optional public sharing; neither is committed until the dashboard milestone is stable.
+3. **Choose the next product feature from usage.** Candidate areas include additional reliable content sources and optional public sharing; neither is committed until this review is complete.
 
 ## Intentionally deferred
 

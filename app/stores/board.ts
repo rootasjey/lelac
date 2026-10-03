@@ -241,6 +241,25 @@ export const useBoardStore = defineStore('board', () => {
     return updateDashboardList(next)
   }
 
+  function reorderDashboard(id: string, targetId: string) {
+    const next = orderedDashboards()
+    const sourceIndex = next.findIndex(item => item.id === id)
+    const targetIndex = next.findIndex(item => item.id === targetId)
+    if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return false
+    const [moved] = next.splice(sourceIndex, 1)
+    next.splice(targetIndex, 0, moved!)
+    return updateDashboardList(next)
+  }
+
+  function reorderDashboards(ids: string[]) {
+    const current = orderedDashboards()
+    if (ids.length !== current.length || new Set(ids).size !== current.length) return false
+    const byId = new Map(current.map(item => [item.id, item]))
+    if (ids.some(id => !byId.has(id))) return false
+    if (ids.every((id, index) => current[index]?.id === id)) return false
+    return updateDashboardList(ids.map((id, order) => ({ ...byId.get(id)!, order })))
+  }
+
   function deleteDashboard(id: string) {
     const next = orderedDashboards().filter(item => item.id !== id)
     if (next.length === dashboards.value.length || next.length === 0) {
@@ -248,6 +267,22 @@ export const useBoardStore = defineStore('board', () => {
       return false
     }
     return updateDashboardList(next, next[0]!.id)
+  }
+
+  function deleteAllDashboards() {
+    const current = orderedDashboards().find(item => item.id === activeDashboard.value) ?? orderedDashboards()[0]
+    if (!current) return false
+    const next = [{ ...current, order: 0 }]
+    const emptyConfig: BoardConfig = { version: 1, widgets: [] }
+    if (!writeCollection(next, { [current.id]: emptyConfig })) return false
+    dashboards.value = next
+    activeDashboard.value = current.id
+    config.value = emptyConfig
+    history.value = []
+    message.value = ''
+    ready.value = true
+    void queueRemoteSaveAll(readAllDashboards())
+    return true
   }
 
   function resetDispositions() {
@@ -339,7 +374,7 @@ export const useBoardStore = defineStore('board', () => {
   return {
     activeDashboard, dashboards, config, ready, message, history, widgets,
     init, setLayout, saveWidget, removeWidget, undo, createDashboard, renameDashboard,
-    moveDashboard, deleteDashboard, resetDispositions, readAllDashboards,
+    moveDashboard, reorderDashboard, reorderDashboards, deleteDashboard, deleteAllDashboards, resetDispositions, readAllDashboards,
     replaceAllDashboards, syncWithAccount, disableRemoteSync,
   }
 })

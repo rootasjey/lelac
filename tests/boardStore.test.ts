@@ -148,6 +148,49 @@ describe('board undo', () => {
     expect(store.dashboards).toHaveLength(1)
   })
 
+  it('reorders dashboards by dropping one tab onto another', () => {
+    setActivePinia(createPinia())
+    const store = useBoardStore()
+    store.init('daily')
+
+    expect(store.reorderDashboard('cinema', 'daily')).toBe(true)
+    expect(store.dashboards.map(item => item.id)).toEqual(['cinema', 'daily', 'tech'])
+    expect(JSON.parse(localStorage.getItem(dashboardListStorageKey)!)).toEqual(store.dashboards)
+  })
+
+  it('persists a complete dashboard order from the management list', () => {
+    setActivePinia(createPinia())
+    const store = useBoardStore()
+    store.init('daily')
+    const extraId = store.createDashboard('Voyages')!
+    store.renameDashboard(extraId, 'Escapades')
+
+    expect(store.reorderDashboards([extraId, 'cinema', 'daily', 'tech'])).toBe(true)
+    expect(store.dashboards.map(item => [item.id, item.title, item.order])).toEqual([
+      [extraId, 'Escapades', 0],
+      ['cinema', 'Cinéma', 1],
+      ['daily', 'Quotidien', 2],
+      ['tech', 'Tech', 3],
+    ])
+    expect(JSON.parse(localStorage.getItem(dashboardListStorageKey)!)).toEqual(store.dashboards)
+    expect(store.reorderDashboards([extraId, 'cinema', 'daily', 'missing'])).toBe(false)
+    expect(store.reorderDashboards([extraId, extraId, 'daily', 'tech'])).toBe(false)
+  })
+
+  it('clears every dashboard but keeps the active one as an empty board', () => {
+    setActivePinia(createPinia())
+    const store = useBoardStore()
+    store.init('daily')
+    const temporaryId = store.createDashboard('À supprimer')!
+    store.saveWidget(widgetDefaults('clock', 'temporary-clock'))
+
+    expect(store.deleteAllDashboards()).toBe(true)
+    expect(store.dashboards).toEqual([{ id: temporaryId, title: 'À supprimer', order: 0 }])
+    expect(store.activeDashboard).toBe(temporaryId)
+    expect(store.widgets).toEqual([])
+    expect(localStorage.getItem(dashboardStorageKey('daily'))).toBeNull()
+  })
+
   it('uses the first dashboard as the home dashboard after reordering', () => {
     setActivePinia(createPinia())
     const store = useBoardStore()

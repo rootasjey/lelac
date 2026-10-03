@@ -69,7 +69,7 @@ The production D1 database `lelac-auth-prod` is provisioned in the EU jurisdicti
 
 The production email, registration and verification, login, password reset, per-user board isolation, and save/reload flows have been manually verified on Workers. The production build, typecheck, test suite, D1 migration, Wrangler dry run, and deployed auth pages are also verified. Operational safeguards now include D1 Time Travel recovery, self-service account deletion, and privacy-safe email failure logs; see [production operations](docs/operations.md).
 
-The current product milestone is user-managed dashboards: create, rename, reorder and delete boards, with the first tab opening at home. The collection is persisted in D1 and local recovery storage and preserved by configuration import/export. The implementation is in progress; the authenticated browser review and production D1 migration remain before release. The detailed status and remaining checks live in [the roadmap](docs/roadmap.md).
+User-managed dashboards are shipped: users can create, rename, reorder and delete boards, with the first tab opening at home. The collection is persisted in D1 and local recovery storage and preserved by configuration import/export. The current follow-up polishes quick tab actions and drag-to-reorder in the management dialog; its new interactions still need browser verification. The detailed status and remaining checks live in [the roadmap](docs/roadmap.md).
 
 ## Current dashboard
 

@@ -3,14 +3,59 @@
     <div class="board-shell">
       <header class="board-header">
         <NuxtLink to="/" class="brand">
-          <span class="brand-wordmark">Le Lac<span aria-hidden="true">↘</span></span>
+          <span class="brand-wordmark">Le Lac</span>
           <span class="brand-tagline">Composez votre quotidien</span>
         </NuxtLink>
-        <nav class="dashboard-tabs" aria-label="Tableaux">
-          <NuxtLink v-for="dashboard in store.dashboards" :key="dashboard.id" :to="dashboardHref(dashboard.id)" class="board-tab" :class="{ active: store.activeDashboard === dashboard.id }" :aria-current="store.activeDashboard === dashboard.id ? 'page' : undefined">{{ dashboard.title }}</NuxtLink>
-          <NTooltip content="Créer ou organiser vos tableaux">
-            <NButton type="button" icon label="i-ph-squares-four-bold" btn="ghost" class="dashboard-manage-trigger" aria-label="Gérer les tableaux" @click="dashboardManagerOpen = true" />
-          </NTooltip>
+        <nav class="dashboard-tabs" aria-label="Tableaux" @dragend="finishDashboardDrag">
+          <template v-for="dashboard in store.dashboards" :key="dashboard.id">
+            <div
+              class="dashboard-tab-item"
+              :class="{ 'drop-target': dragOverDashboardId === dashboard.id && draggedDashboardId !== dashboard.id, 'is-dragging': draggedDashboardId === dashboard.id }"
+              @dragover.prevent="dragOverDashboardId = dashboard.id"
+              @drop.prevent="dropDashboard($event, dashboard.id)"
+            >
+              <form v-if="renamingDashboardId === dashboard.id" class="board-tab-editor" @submit.prevent="commitTabRename(dashboard.id)">
+                <input :id="`dashboard-tab-input-${dashboard.id}`" :value="dashboard.title" maxlength="40" :aria-label="`Renommer ${dashboard.title}`" @keydown.esc.prevent="cancelTabRename" @blur="commitTabRename(dashboard.id)">
+              </form>
+              <NTooltip v-else content="Double-cliquez pour renommer · Glissez pour réordonner" :_tooltip-content="{ class: 'dashboard-tab-tooltip' }">
+                <NuxtLink
+                  :to="dashboardHref(dashboard.id)"
+                  class="board-tab"
+                  :class="{ active: store.activeDashboard === dashboard.id }"
+                  :aria-current="store.activeDashboard === dashboard.id ? 'page' : undefined"
+                  draggable="true"
+                  @dblclick.prevent="beginTabRename(dashboard.id)"
+                  @keydown.f2.prevent="beginTabRename(dashboard.id)"
+                  @dragstart="startDashboardDrag($event, dashboard.id)"
+                >{{ dashboard.title }}</NuxtLink>
+              </NTooltip>
+              <NDropdownMenuRoot v-if="renamingDashboardId !== dashboard.id">
+                <NDropdownMenuTrigger as-child>
+                  <NButton type="button" icon label="i-ph-dots-three-vertical-bold" btn="ghost" class="dashboard-tab-menu-trigger" :aria-label="`Options pour ${dashboard.title}`" />
+                </NDropdownMenuTrigger>
+                <NDropdownMenuContent align="start" :side-offset="6" class="dashboard-menu-content">
+                  <NDropdownMenuItem class="dashboard-menu-item" leading="i-ph-pencil-simple-bold" @select="beginTabRename(dashboard.id)">Renommer</NDropdownMenuItem>
+                  <NDropdownMenuSeparator class="dashboard-menu-separator" />
+                  <NDropdownMenuItem class="dashboard-menu-item dashboard-menu-item-danger" leading="i-ph-trash-bold" :disabled="store.dashboards.length === 1" @select="openDashboardDelete(dashboard.id)">Supprimer…</NDropdownMenuItem>
+                </NDropdownMenuContent>
+              </NDropdownMenuRoot>
+            </div>
+          </template>
+          <div class="dashboard-tab-actions">
+            <NTooltip content="Ajouter un tableau">
+              <NButton type="button" icon label="i-ph-plus-bold" btn="ghost" class="dashboard-add-trigger" aria-label="Ajouter un tableau" @click="addDashboard" />
+            </NTooltip>
+            <NDropdownMenuRoot>
+              <NDropdownMenuTrigger as-child>
+                <NButton type="button" icon label="i-ph-dots-three-vertical-bold" btn="ghost" class="dashboard-menu-trigger" aria-label="Options des tableaux" />
+              </NDropdownMenuTrigger>
+              <NDropdownMenuContent align="end" :side-offset="6" class="dashboard-menu-content">
+                <NDropdownMenuItem class="dashboard-menu-item" leading="i-ph-sliders-horizontal-bold" @select="dashboardManagerOpen = true">Gérer les tableaux</NDropdownMenuItem>
+                <NDropdownMenuSeparator class="dashboard-menu-separator" />
+                <NDropdownMenuItem class="dashboard-menu-item dashboard-menu-item-danger" leading="i-ph-trash-bold" @select="dashboardBulkDeleteOpen = true">Tout supprimer…</NDropdownMenuItem>
+              </NDropdownMenuContent>
+            </NDropdownMenuRoot>
+          </div>
         </nav>
       </header>
       <div class="board-status">
@@ -79,16 +124,16 @@
     </div>
     <BoardSettings v-if="settings" :key="settings.id" :widget="settings" :is-new="isNew" @save="save" @close="settings = undefined" @remove="remove" />
     <NDialog v-model:open="dashboardManagerOpen">
-      <NDialogContent class="dashboard-manager-dialog" :_dialog-overlay="{ class: 'dashboard-manager-overlay' }" :show-close="false" @open-auto-focus="focusDashboardName">
+      <NDialogContent class="dashboard-manager-dialog" :_dialog-overlay="{ class: 'dashboard-manager-overlay' }" :show-close="false">
         <div class="dashboard-manager-heading">
-          <div><NDialogTitle>Vos tableaux</NDialogTitle><p>Le premier tableau s’ouvre à l’accueil. Ajustez leur ordre et leur nom ici.</p></div>
+          <div><NDialogTitle>Vos tableaux</NDialogTitle><p>Le premier s’ouvre à l’accueil. Renommez, réordonnez ou supprimez vos tableaux ici.</p></div>
           <NTooltip content="Fermer">
             <NButton type="button" icon label="i-ph-x-bold" btn="ghost" class="dashboard-manager-close" aria-label="Fermer la gestion des tableaux" @click="dashboardManagerOpen = false" />
           </NTooltip>
         </div>
-        <div class="dashboard-manager-list">
-          <div v-for="(dashboard, index) in store.dashboards" :key="dashboard.id" class="dashboard-manager-row">
-            <span class="dashboard-manager-grip i-ph-dots-six-vertical-bold" aria-hidden="true" />
+        <VueDraggable v-model="managedDashboards" class="dashboard-manager-list" item-key="id" handle=".dashboard-manager-grip" :animation="160" ghost-class="dashboard-manager-row-ghost" chosen-class="dashboard-manager-row-chosen" drag-class="dashboard-manager-row-dragging">
+          <div v-for="(dashboard, index) in managedDashboards" :key="dashboard.id" class="dashboard-manager-row">
+            <span class="dashboard-manager-grip i-ph-dots-six-vertical-bold" aria-hidden="true" title="Faire glisser pour réordonner" />
             <label class="sr-only" :for="`dashboard-name-${dashboard.id}`">Nom du tableau {{ dashboard.title }}</label>
             <input :id="`dashboard-name-${dashboard.id}`" :value="dashboard.title" maxlength="40" @change="renameDashboard(dashboard.id, ($event.target as HTMLInputElement).value)">
             <div class="dashboard-manager-actions">
@@ -96,24 +141,35 @@
                 <NButton type="button" icon label="i-ph-arrow-up-bold" btn="ghost" class="dashboard-row-action" :aria-label="`Monter ${dashboard.title}`" :disabled="index === 0" @click="store.moveDashboard(dashboard.id, -1)" />
               </NTooltip>
               <NTooltip content="Descendre">
-                <NButton type="button" icon label="i-ph-arrow-down-bold" btn="ghost" class="dashboard-row-action" :aria-label="`Descendre ${dashboard.title}`" :disabled="index === store.dashboards.length - 1" @click="store.moveDashboard(dashboard.id, 1)" />
+                <NButton type="button" icon label="i-ph-arrow-down-bold" btn="ghost" class="dashboard-row-action" :aria-label="`Descendre ${dashboard.title}`" :disabled="index === managedDashboards.length - 1" @click="store.moveDashboard(dashboard.id, 1)" />
               </NTooltip>
               <NTooltip content="Supprimer">
-                <NButton type="button" icon label="i-ph-trash-bold" btn="ghost" class="dashboard-row-action dashboard-delete-action" :aria-label="`Supprimer ${dashboard.title}`" :disabled="store.dashboards.length === 1" @click="dashboardToDelete = dashboardToDelete === dashboard.id ? '' : dashboard.id" />
+                <NButton type="button" icon label="i-ph-trash-bold" btn="ghost" class="dashboard-row-action dashboard-delete-action" :aria-label="`Supprimer ${dashboard.title}`" :disabled="store.dashboards.length === 1" @click="openDashboardDelete(dashboard.id)" />
               </NTooltip>
             </div>
-            <div v-if="dashboardToDelete === dashboard.id" class="dashboard-delete-confirm" role="group" :aria-label="`Confirmer la suppression de ${dashboard.title}`">
-              <span>Supprimer « {{ dashboard.title }} » et ses widgets ?</span>
-              <button type="button" class="dashboard-delete-cancel" @click="dashboardToDelete = ''">Annuler</button>
-              <button type="button" class="dashboard-delete-confirm-button" @click="deleteDashboard(dashboard.id)">Supprimer</button>
-            </div>
           </div>
-        </div>
-        <form class="dashboard-create-form" @submit.prevent="createDashboard">
-          <label for="new-dashboard-name">Nouveau tableau</label>
-          <div><input id="new-dashboard-name" ref="dashboardNameInput" v-model="newDashboardName" maxlength="40" placeholder="Ex. Lecture, Voyages…"><NButton type="submit" btn="solid" :disabled="!newDashboardName.trim()">Créer</NButton></div>
-        </form>
+        </VueDraggable>
         <p v-if="store.message" class="dashboard-manager-message" role="status">{{ store.message }}</p>
+      </NDialogContent>
+    </NDialog>
+    <NDialog v-model:open="dashboardDeleteOpen">
+      <NDialogContent class="dashboard-delete-dialog" :_dialog-overlay="{ class: 'dashboard-manager-overlay' }" :show-close="false">
+        <NDialogTitle>Supprimer « {{ dashboardDeleteTitle }} » ?</NDialogTitle>
+        <p>Ce tableau et ses widgets seront supprimés. Cette action ne peut pas être annulée.</p>
+        <div class="dashboard-bulk-delete-actions">
+          <NButton type="button" btn="soft" @click="dashboardDeleteOpen = false">Annuler</NButton>
+          <NButton type="button" btn="solid" class="dashboard-bulk-delete-confirm" @click="confirmDashboardDelete">Supprimer le tableau</NButton>
+        </div>
+      </NDialogContent>
+    </NDialog>
+    <NDialog v-model:open="dashboardBulkDeleteOpen">
+      <NDialogContent class="dashboard-bulk-delete-dialog" :_dialog-overlay="{ class: 'dashboard-manager-overlay' }" :show-close="false">
+        <NDialogTitle>Supprimer tous les tableaux ?</NDialogTitle>
+        <p>Tous les tableaux et leurs widgets seront supprimés. « {{ currentDashboardTitle }} » restera seul, vide, pour que vous puissiez repartir de zéro.</p>
+        <div class="dashboard-bulk-delete-actions">
+          <NButton type="button" btn="soft" @click="dashboardBulkDeleteOpen = false">Annuler</NButton>
+          <NButton type="button" btn="solid" class="dashboard-bulk-delete-confirm" @click="deleteAllDashboards">Tout supprimer</NButton>
+        </div>
       </NDialogContent>
     </NDialog>
     <NDialog v-model:open="pickerOpen">
@@ -185,11 +241,12 @@
 <script setup lang="ts">
 import { GridLayout, GridItem } from 'grid-layout-plus'
 import type { GridLayoutExpose, Layout, ResizeConfig } from 'grid-layout-plus'
+import { VueDraggable } from 'vue-draggable-plus'
 import 'grid-layout-plus/style.css'
 import BoardYouTube from './BoardYouTube.vue'
 import BoardWidgetActionsMenu from './BoardWidgetActionsMenu.vue'
 import { widgetDefaults } from '~/utils/boardConfig'
-import type { BoardWidget, DashboardId, WidgetKind } from '~/utils/boardConfig'
+import type { BoardWidget, DashboardDefinition, DashboardId, WidgetKind } from '~/utils/boardConfig'
 const props = defineProps<{ dashboardId: DashboardId }>()
 const store = useBoardStore()
 const dashboardId = computed(() => store.activeDashboard)
@@ -209,9 +266,17 @@ const settings = ref<BoardWidget>()
 const isNew = ref(false)
 const pickerOpen = ref(false)
 const dashboardManagerOpen = ref(false)
-const dashboardToDelete = ref('')
-const newDashboardName = ref('')
-const dashboardNameInput = ref<HTMLInputElement>()
+const dashboardBulkDeleteOpen = ref(false)
+const dashboardDeleteOpen = ref(false)
+const dashboardDeleteTarget = ref('')
+const dashboardDeleteTitle = computed(() => store.dashboards.find(item => item.id === dashboardDeleteTarget.value)?.title ?? 'ce tableau')
+const managedDashboards = computed<DashboardDefinition[]>({
+  get: () => store.dashboards,
+  set: dashboards => store.reorderDashboards(dashboards.map(item => item.id)),
+})
+const renamingDashboardId = ref('')
+const draggedDashboardId = ref('')
+const dragOverDashboardId = ref('')
 const widgetSearch = ref('')
 const widgetSearchInput = ref<HTMLInputElement>()
 const widgetCatalog = [
@@ -286,30 +351,90 @@ function focusPickerSearch(event: Event) {
   event.preventDefault()
   nextTick(() => widgetSearchInput.value?.focus())
 }
-function focusDashboardName(event: Event) {
-  event.preventDefault()
-  nextTick(() => dashboardNameInput.value?.focus())
+function focusTabTitle(id: string) {
+  nextTick(() => {
+    const input = document.getElementById(`dashboard-tab-input-${id}`) as HTMLInputElement | null
+    input?.focus()
+    input?.select()
+  })
 }
 function dashboardHref(id: string) { return id === defaultDashboardId.value ? '/' : { path: '/', query: { board: id } } }
-async function createDashboard() {
-  const id = store.createDashboard(newDashboardName.value)
+function temporaryDashboardTitle() {
+  const titles = new Set(store.dashboards.map(item => item.title.toLocaleLowerCase('fr')))
+  let title = 'Nouveau tableau'
+  let suffix = 2
+  while (titles.has(title.toLocaleLowerCase('fr'))) title = `Nouveau tableau ${suffix++}`
+  return title
+}
+async function addDashboard() {
+  const id = store.createDashboard(temporaryDashboardTitle())
   if (!id) return
-  newDashboardName.value = ''
-  dashboardToDelete.value = ''
-  dashboardManagerOpen.value = false
+  renamingDashboardId.value = id
   await navigateTo(dashboardHref(id))
+  focusTabTitle(id)
+}
+function beginTabRename(id: string) {
+  renamingDashboardId.value = id
+  focusTabTitle(id)
+}
+function cancelTabRename() { renamingDashboardId.value = '' }
+function startDashboardDrag(event: DragEvent, id: string) {
+  if (renamingDashboardId.value) { event.preventDefault(); return }
+  draggedDashboardId.value = id
+  dragOverDashboardId.value = ''
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', id)
+  }
+}
+async function dropDashboard(event: DragEvent, targetId: string) {
+  const sourceId = event.dataTransfer?.getData('text/plain') || draggedDashboardId.value
+  if (sourceId && sourceId !== targetId && store.reorderDashboard(sourceId, targetId)) {
+    await navigateTo(dashboardHref(store.activeDashboard))
+  }
+  finishDashboardDrag()
+}
+function finishDashboardDrag() {
+  draggedDashboardId.value = ''
+  dragOverDashboardId.value = ''
 }
 function renameDashboard(id: string, title: string) {
-  if (store.renameDashboard(id, title)) return
+  if (store.renameDashboard(id, title)) return true
   const input = document.getElementById(`dashboard-name-${id}`) as HTMLInputElement | null
   const existingTitle = store.dashboards.find(item => item.id === id)?.title
   if (input && existingTitle) input.value = existingTitle
+  return false
+}
+function commitTabRename(id: string) {
+  if (renamingDashboardId.value !== id) return
+  const input = document.getElementById(`dashboard-tab-input-${id}`) as HTMLInputElement | null
+  if (!input) return
+  if (renameDashboard(id, input.value)) {
+    renamingDashboardId.value = ''
+    return
+  }
+  input.value = store.dashboards.find(item => item.id === id)?.title ?? input.value
+  renamingDashboardId.value = ''
 }
 async function deleteDashboard(id: string) {
   const wasActive = store.activeDashboard === id
   if (!store.deleteDashboard(id)) return
-  dashboardToDelete.value = ''
   if (wasActive) await navigateTo(dashboardHref(store.activeDashboard))
+}
+function openDashboardDelete(id: string) {
+  dashboardDeleteTarget.value = id
+  dashboardDeleteOpen.value = true
+}
+async function confirmDashboardDelete() {
+  const id = dashboardDeleteTarget.value
+  dashboardDeleteOpen.value = false
+  dashboardDeleteTarget.value = ''
+  if (id) await deleteDashboard(id)
+}
+async function deleteAllDashboards() {
+  if (!store.deleteAllDashboards()) return
+  dashboardBulkDeleteOpen.value = false
+  await navigateTo('/')
 }
 function focusDetailTitle(event: Event) {
   event.preventDefault()
@@ -366,14 +491,29 @@ function setYoutubeAvailability(id: string, available: boolean) {
 .board-header { display: flex; align-items: center; gap: 36px; min-height: 62px; border-bottom: 1px solid var(--board-border); }
 .brand { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; color: var(--board-text); text-decoration: none; }
 .brand-wordmark { font-size: 20px; letter-spacing: -1px; line-height: 1; }
-.brand-wordmark span { margin-left: 8px; color: var(--board-accent); }
 .brand-tagline { color: var(--board-text-soft); font-size: 10px; line-height: 1.2; }
-.dashboard-tabs { align-self: stretch; display: flex; align-items: stretch; gap: 24px; }
-.dashboard-manage-trigger { align-self: center; width: 40px; height: 40px; min-height: 40px; margin-left: -12px; color: var(--board-text-muted); }
-.dashboard-manage-trigger:hover { color: var(--board-accent); }
+.dashboard-tabs { align-self: stretch; display: flex; min-width: 0; align-items: stretch; gap: 24px; }
+.dashboard-tab-actions { align-self: center; display: flex; flex: 0 0 auto; align-items: center; gap: 4px; margin-left: -12px; }
+.dashboard-add-trigger, .dashboard-menu-trigger { display: grid; place-items: center; width: 36px; height: 36px; min-height: 36px; color: var(--board-text-muted); }
+.dashboard-add-trigger { color: var(--board-accent); }
+.dashboard-add-trigger:hover, .dashboard-menu-trigger:hover { color: var(--board-accent-bright); background: var(--board-hover); }
 .board-tab { display: flex; align-items: center; border-bottom: 2px solid transparent; color: var(--board-text-dim); text-decoration: none; transition: color 140ms ease, border-color 140ms ease; }
 .board-tab:hover, .board-tab.active { color: var(--board-text); }
 .board-tab.active { border-color: var(--board-accent); }
+.dashboard-tab-item { position: relative; display: flex; flex: 0 0 auto; min-width: 0; align-items: stretch; }
+.dashboard-tab-item .board-tab { padding-right: 38px; }
+.dashboard-tab-item.drop-target { box-shadow: inset 2px 0 var(--board-accent-bright); }
+.dashboard-tab-item.is-dragging { opacity: .42; }
+.dashboard-tab-menu-trigger { position: absolute; top: 50%; right: 0; display: grid; width: 28px; height: 28px; min-height: 28px; place-items: center; border-radius: 4px; background: var(--board-canvas); color: var(--board-text-muted); opacity: 0; pointer-events: none; transform: translateY(-50%); transition: opacity 120ms ease, color 120ms ease, background-color 120ms ease; }
+.dashboard-tab-item:hover .dashboard-tab-menu-trigger, .dashboard-tab-item:focus-within .dashboard-tab-menu-trigger, .dashboard-tab-menu-trigger:focus-visible { opacity: 1; pointer-events: auto; }
+.dashboard-tab-menu-trigger:hover, .dashboard-tab-menu-trigger:focus-visible { background: var(--board-hover); color: var(--board-accent); }
+.dashboard-tab-menu-trigger:focus-visible { outline: 2px solid var(--board-accent); outline-offset: 1px; }
+@media (hover: none) { .dashboard-tab-menu-trigger { opacity: 1; pointer-events: auto; } }
+@media (prefers-reduced-motion: reduce) { .dashboard-tab-menu-trigger { transition: none; } }
+:global(.tooltip-content.dashboard-tab-tooltip) { border: 1px solid var(--board-border-strong); border-radius: 6px; background: var(--board-hover-strong); color: var(--board-text); padding: 6px 10px; font: 12px/1.4 system-ui, sans-serif; box-shadow: 0 4px 12px #0008; }
+.board-tab-editor { display: flex; min-width: 116px; align-items: center; border-bottom: 2px solid var(--board-accent); }
+.board-tab-editor input { box-sizing: border-box; width: 152px; max-width: 24vw; height: 34px; padding: 0 8px; border: 1px solid var(--board-border-control); border-radius: 4px; outline: none; background: var(--board-surface-raised); color: var(--board-text); font: inherit; }
+.board-tab-editor input:focus-visible { border-color: var(--board-accent); outline: 2px solid color-mix(in srgb, var(--board-accent) 35%, transparent); outline-offset: 1px; }
 .native-button { font: inherit; color: var(--board-accent); border: 1px solid var(--board-border-strong); border-radius: 4px; padding: 9px 12px; background: transparent; cursor: pointer; min-height: 40px; }
 .native-button:disabled { opacity: .45; cursor: default; }
 .native-button:hover:not(:disabled) { background: var(--board-hover-strong); }
@@ -465,7 +605,7 @@ select { background: var(--board-surface-inset); border: 1px solid var(--board-b
 .dialog-footer { display: flex; justify-content: flex-end; margin-top: 24px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
-@media (max-width: 767px), (max-width: 900px) and (max-height: 500px) { .board-shell { padding: 12px 16px 128px; } .board-header { gap: 16px; flex-wrap: wrap; padding-bottom: 0; } .brand-wordmark { font-size: 18px; } .dashboard-tabs { order: 1; width: 100%; height: 40px; gap: 20px; overflow-x: auto; } .dashboard-manage-trigger { flex: 0 0 40px; margin-left: -8px; } .board-status { min-height: 38px; } .board-control-dock { bottom: calc(40px + env(safe-area-inset-bottom, 0px)); } }
+@media (max-width: 767px), (max-width: 900px) and (max-height: 500px) { .board-shell { padding: 12px 16px 128px; } .board-header { gap: 16px; flex-wrap: wrap; padding-bottom: 0; } .brand-wordmark { font-size: 18px; } .dashboard-tabs { order: 1; width: 100%; height: 40px; gap: 18px; overflow-x: auto; } .dashboard-tab-actions { gap: 2px; margin-left: -10px; } .dashboard-add-trigger, .dashboard-menu-trigger { flex: 0 0 36px; width: 36px; height: 36px; min-height: 36px; } .board-tab-editor input { width: 132px; max-width: 42vw; height: 32px; } .board-status { min-height: 38px; } .board-control-dock { bottom: calc(40px + env(safe-area-inset-bottom, 0px)); } }
 @media (prefers-reduced-motion: reduce) { .board-control-dock { transition: none; } }
 @media (prefers-reduced-motion: reduce) { :global(.widget-detail-dialog-overlay[data-state]), :global(.widget-detail-dialog-content[data-state]) { animation: none; } }
 .empty-board { padding: 48px 24px; text-align: center; border: 1px dashed var(--board-border-strong); }
@@ -512,22 +652,35 @@ select { background: var(--board-surface-inset); border: 1px solid var(--board-b
 .dashboard-manager-close { width: 40px; height: 40px; min-height: 40px; color: var(--board-accent); }
 .dashboard-manager-list { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; gap: 8px; overflow: auto; overscroll-behavior: contain; }
 .dashboard-manager-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 8px; position: relative; min-height: 52px; padding: 6px 8px; border-radius: 6px; background: var(--board-surface-alt); }
-.dashboard-manager-grip { color: var(--board-text-muted); font-size: 18px; }
-.dashboard-manager-row input, .dashboard-create-form input { box-sizing: border-box; width: 100%; min-width: 0; height: 40px; padding: 0 12px; border: 1px solid var(--board-border-control); border-radius: 4px; outline: none; background: var(--board-surface-inset); color: var(--board-text); font: inherit; }
-.dashboard-manager-row input:focus, .dashboard-create-form input:focus { border-color: var(--board-accent); outline: 2px solid color-mix(in srgb, var(--board-accent) 35%, transparent); outline-offset: 1px; }
+.dashboard-manager-grip { color: var(--board-text-muted); font-size: 18px; cursor: grab; touch-action: none; }
+.dashboard-manager-grip:active { cursor: grabbing; }
+.dashboard-manager-row-ghost { opacity: .35; background: var(--board-highlight); }
+.dashboard-manager-row-chosen { outline: 1px solid var(--board-accent); }
+.dashboard-manager-row-dragging { opacity: .92; box-shadow: 0 12px 28px #0006; }
+.dashboard-manager-row input { box-sizing: border-box; width: 100%; min-width: 0; height: 40px; padding: 0 12px; border: 1px solid var(--board-border-control); border-radius: 4px; outline: none; background: var(--board-surface-inset); color: var(--board-text); font: inherit; }
+.dashboard-manager-row input:focus { border-color: var(--board-accent); outline: 2px solid color-mix(in srgb, var(--board-accent) 35%, transparent); outline-offset: 1px; }
 .dashboard-manager-actions { display: flex; gap: 2px; }
 .dashboard-row-action { width: 36px; height: 36px; min-height: 36px; color: var(--board-text-soft); }
 .dashboard-row-action:hover:not(:disabled) { color: var(--board-accent); background: var(--board-hover); }
 .dashboard-delete-action { color: #d99b92; }
-.dashboard-delete-confirm { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; padding: 9px 4px 2px; color: var(--board-text-soft); font-size: 11px; }
-.dashboard-delete-confirm span { margin-right: auto; }
-.dashboard-delete-cancel, .dashboard-delete-confirm-button { min-height: 36px; padding: 0 10px; border: 0; background: transparent; color: var(--board-text-soft); font: inherit; cursor: pointer; }
-.dashboard-delete-confirm-button { border-radius: 4px; background: color-mix(in srgb, #b45b52 22%, transparent); color: #e7a097; }
-.dashboard-create-form { display: flex; flex: 0 0 auto; flex-direction: column; gap: 8px; padding-top: 18px; border-top: 1px solid var(--board-border); }
-.dashboard-create-form label { color: var(--board-text-soft); font-size: 12px; }
-.dashboard-create-form > div { display: flex; gap: 10px; }
-.dashboard-create-form :deep(button) { min-width: 96px; min-height: 40px; }
 .dashboard-manager-message { margin: -12px 0 0; color: #e7a097; font-size: 11px; line-height: 1.5; }
+.dashboard-menu-content { min-width: 208px; padding: 6px; border-color: var(--board-border-strong); background: var(--board-surface-inset); color: var(--board-text-soft); font: 11px/1.4 'SF Mono', 'Cascadia Code', 'Consolas', monospace; box-shadow: 0 12px 30px #08080c88; }
+.dashboard-menu-content .dashboard-menu-item { display: flex; min-height: 36px; align-items: center; gap: 10px; border-radius: 3px; padding: 7px 9px; color: var(--board-text-soft); font: inherit; text-align: left; }
+.dashboard-menu-content .dashboard-menu-item[data-highlighted] { background: var(--board-highlight); color: var(--board-text); }
+.dashboard-menu-content .dashboard-menu-item .btn-leading { color: var(--board-accent); font-size: 15px; }
+.dashboard-menu-content .dashboard-menu-separator { height: 1px; margin: 5px 4px; background: var(--board-border); }
+.dashboard-menu-content .dashboard-menu-item-danger { color: #e59b91; }
+.dashboard-menu-content .dashboard-menu-item-danger .btn-leading { color: inherit; }
+::global(.dashboard-bulk-delete-dialog) { position: fixed; top: 50%; left: 50%; z-index: 50; box-sizing: border-box; width: min(460px, calc(100vw - 32px)); max-width: none; padding: 24px; border: 1px solid var(--board-border-strong); border-radius: 12px; background: var(--board-surface); color: var(--board-text); transform: translate(-50%, -50%); }
+::global(.dashboard-bulk-delete-dialog h2) { color: var(--board-text); font: 21px/1.25 system-ui, sans-serif; letter-spacing: 0; text-transform: none; }
+::global(.dashboard-bulk-delete-dialog p) { margin: 10px 0 24px; color: var(--board-text-soft); font: 13px/1.6 system-ui, sans-serif; }
+::global(.dashboard-delete-dialog) { position: fixed; top: 50%; left: 50%; z-index: 50; box-sizing: border-box; width: min(460px, calc(100vw - 32px)); max-width: none; padding: 24px; border: 1px solid var(--board-border-strong); border-radius: 12px; background: var(--board-surface); color: var(--board-text); transform: translate(-50%, -50%); }
+::global(.dashboard-delete-dialog h2) { color: var(--board-text); font: 21px/1.25 system-ui, sans-serif; letter-spacing: 0; text-transform: none; }
+::global(.dashboard-delete-dialog p) { margin: 10px 0 24px; color: var(--board-text-soft); font: 13px/1.6 system-ui, sans-serif; }
+.dashboard-bulk-delete-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.dashboard-bulk-delete-actions :deep(button) { min-height: 40px; }
+.dashboard-bulk-delete-actions :deep(.dashboard-bulk-delete-confirm) { background: #8a3735; color: #fff3ec; }
+.dashboard-bulk-delete-actions :deep(.dashboard-bulk-delete-confirm:hover) { background: #a24540; }
 ::global(.dashboard-manager-dialog[data-state='open']) { animation: widget-picker-dialog-in 180ms ease-out both; }
 ::global(.dashboard-manager-overlay[data-state='open']) { animation: widget-picker-overlay-in 160ms ease-out both; }
 ::global(.dashboard-manager-overlay[data-state='closed']) { animation: widget-picker-overlay-out 120ms ease-in both; }
@@ -542,7 +695,7 @@ select { background: var(--board-surface-inset); border: 1px solid var(--board-b
 @keyframes widget-picker-dialog-in { from { opacity: 0; transform: translate(-50%, -48%) scale(.985); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
 @keyframes widget-picker-dialog-out { from { opacity: 1; transform: translate(-50%, -50%) scale(1); } to { opacity: 0; transform: translate(-50%, -48%) scale(.985); } }
 @media (max-width: 560px) { :global(.widget-picker-dialog-content) { width: calc(100vw - 24px); height: min(86dvh, 720px); padding: 18px; } .widget-catalog { grid-template-columns: 1fr; gap: 8px; } .widget-catalog-card { padding: 12px; } }
-@media (max-width: 560px) { :global(.dashboard-manager-dialog) { width: calc(100vw - 24px); max-height: 88dvh; padding: 18px; gap: 16px; } .dashboard-manager-row { grid-template-columns: 16px minmax(0, 1fr) auto; gap: 4px; padding: 5px; } .dashboard-row-action { width: 32px; height: 32px; min-height: 32px; } .dashboard-create-form :deep(button) { min-width: 76px; } }
+@media (max-width: 560px) { :global(.dashboard-manager-dialog) { width: calc(100vw - 24px); max-height: 88dvh; padding: 18px; gap: 16px; } .dashboard-manager-row { grid-template-columns: 16px minmax(0, 1fr) auto; gap: 4px; padding: 5px; } .dashboard-row-action { width: 32px; height: 32px; min-height: 32px; } }
 @media (prefers-reduced-motion: reduce) { :global(.widget-picker-dialog-content[data-state]), :global(.widget-picker-overlay[data-state]) { animation: none; } }
 @media (prefers-reduced-motion: reduce) { :global(.dashboard-manager-dialog[data-state]), :global(.dashboard-manager-overlay[data-state]) { animation: none; } }
 </style>
