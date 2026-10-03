@@ -10,6 +10,8 @@ const passwordRepeat = ref('')
 const pending = ref(false)
 const errorMessage = ref('')
 const statusMessage = ref('')
+const completed = ref(false)
+const showCompletionScreen = computed(() => completed.value && (props.mode === 'forgot' || props.mode === 'reset'))
 
 if (props.mode === 'login' && route.query['account-deleted'] === '1') {
   statusMessage.value = 'Votre compte et ses tableaux ont été supprimés.'
@@ -57,12 +59,14 @@ async function submit() {
     if (props.mode === 'forgot') {
       const result = await $fetch<{ message: string }>('/api/auth/password-reset', { method: 'POST', body: { email: email.value } })
       statusMessage.value = result.message
+      completed.value = true
       return
     }
     const result = await $fetch<{ message: string }>('/api/auth/password-reset/complete', { method: 'POST', body: { token: props.token, password: password.value } })
     statusMessage.value = result.message
     password.value = ''
     passwordRepeat.value = ''
+    completed.value = true
   } catch (error) {
     const fetchError = error as { data?: { statusMessage?: string }; statusMessage?: string }
     errorMessage.value = fetchError.data?.statusMessage || fetchError.statusMessage || 'Une erreur est survenue. Réessayez.'
@@ -78,27 +82,35 @@ async function submit() {
       <NuxtLink to="/" class="auth-brand">Le Lac<span aria-hidden="true">↘</span></NuxtLink>
       <section class="auth-card" aria-labelledby="auth-title">
         <p class="auth-kicker">VOTRE ESPACE PERSONNEL</p>
-        <h1 id="auth-title">{{ copy.title }}</h1>
-        <p class="auth-intro">{{ copy.intro }}</p>
-        <form class="auth-form" @submit.prevent="submit">
-          <label v-if="mode !== 'reset'" class="auth-field">
-            <span>Adresse e-mail</span>
-            <input v-model="email" type="email" autocomplete="email" required maxlength="254" autofocus>
-          </label>
-          <label v-if="mode === 'login' || mode === 'register' || mode === 'reset'" class="auth-field">
-            <span>Mot de passe</span>
-            <input v-model="password" type="password" :autocomplete="mode === 'login' ? 'current-password' : 'new-password'" required minlength="12" maxlength="128" :autofocus="mode === 'reset'">
-            <small v-if="mode !== 'login'">12 à 128 caractères.</small>
-          </label>
-          <label v-if="mode === 'register' || mode === 'reset'" class="auth-field">
-            <span>Confirmer le mot de passe</span>
-            <input v-model="passwordRepeat" type="password" autocomplete="new-password" required minlength="12" maxlength="128">
-          </label>
-          <p v-if="errorMessage" class="auth-error" role="alert">{{ errorMessage }}</p>
-          <p v-if="statusMessage" class="auth-status" role="status">{{ statusMessage }}</p>
-          <button class="auth-submit" type="submit" :disabled="pending">{{ pending ? 'Veuillez patienter…' : copy.submit }}</button>
-        </form>
-        <nav class="auth-links" aria-label="Options de compte">
+        <template v-if="showCompletionScreen">
+          <div class="auth-success-mark" aria-hidden="true">✓</div>
+          <h1 id="auth-title">{{ mode === 'forgot' ? 'Vérifiez votre boîte e-mail' : 'Mot de passe modifié' }}</h1>
+          <p class="auth-intro">{{ statusMessage }}</p>
+          <NuxtLink to="/login" class="auth-submit auth-success-cta">{{ mode === 'forgot' ? 'Retour à la connexion' : 'OK, me reconnecter' }}</NuxtLink>
+        </template>
+        <template v-else>
+          <h1 id="auth-title">{{ copy.title }}</h1>
+          <p class="auth-intro">{{ copy.intro }}</p>
+          <form class="auth-form" @submit.prevent="submit">
+            <label v-if="mode !== 'reset'" class="auth-field">
+              <span>Adresse e-mail</span>
+              <input v-model="email" type="email" autocomplete="email" required maxlength="254" autofocus>
+            </label>
+            <label v-if="mode === 'login' || mode === 'register' || mode === 'reset'" class="auth-field">
+              <span>Mot de passe</span>
+              <input v-model="password" type="password" :autocomplete="mode === 'login' ? 'current-password' : 'new-password'" required minlength="12" maxlength="128" :autofocus="mode === 'reset'">
+              <small v-if="mode !== 'login'">12 à 128 caractères.</small>
+            </label>
+            <label v-if="mode === 'register' || mode === 'reset'" class="auth-field">
+              <span>Confirmer le mot de passe</span>
+              <input v-model="passwordRepeat" type="password" autocomplete="new-password" required minlength="12" maxlength="128">
+            </label>
+            <p v-if="errorMessage" class="auth-error" role="alert">{{ errorMessage }}</p>
+            <p v-if="statusMessage" class="auth-status" role="status">{{ statusMessage }}</p>
+            <button class="auth-submit" type="submit" :disabled="pending">{{ pending ? 'Veuillez patienter…' : copy.submit }}</button>
+          </form>
+        </template>
+        <nav v-if="!showCompletionScreen" class="auth-links" aria-label="Options de compte">
           <NuxtLink v-if="mode === 'login'" to="/register">Créer un compte</NuxtLink>
           <NuxtLink v-if="mode === 'login'" to="/forgot-password">Mot de passe oublié ?</NuxtLink>
           <NuxtLink v-if="mode === 'register' || mode === 'forgot' || mode === 'reset'" to="/login">Retour à la connexion</NuxtLink>
@@ -127,6 +139,8 @@ h1 { margin: 0; color: var(--board-text); font: 500 34px/1.12 Georgia, serif; le
 .auth-status { color: var(--board-text-soft); }
 .auth-submit { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; padding: 0 18px; border: 0; border-radius: 7px; background: var(--board-accent); color: var(--board-canvas); font: 600 13px/1 system-ui, sans-serif; cursor: pointer; }
 .auth-submit:disabled { cursor: wait; opacity: .7; }
+.auth-success-mark { display: grid; width: 42px; height: 42px; place-items: center; margin: 24px 0 16px; border: 1px solid color-mix(in srgb, var(--board-accent) 42%, transparent); border-radius: 50%; color: var(--board-accent); font-size: 20px; }
+.auth-success-cta { margin-top: 2px; text-decoration: none; }
 .auth-links { display: flex; justify-content: space-between; gap: 16px; margin-top: 20px; }
 .auth-links a { color: var(--board-accent); font-size: 12px; text-decoration: none; }
 .auth-links a:hover { text-decoration: underline; }
