@@ -3,6 +3,8 @@ const props = defineProps<{ dashboardId: string; dashboardTitle: string }>()
 const open = defineModel<boolean>('open', { default: false })
 const enabled = ref(false)
 const shareUrl = ref('')
+const expiresAt = ref<string | null>(null)
+const expirationDays = ref<number | null>(30)
 const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
@@ -15,8 +17,9 @@ watch(open, async (isOpen) => {
   message.value = ''
   loading.value = true
   try {
-    const result = await $fetch<{ enabled: boolean }>(`/api/boards/${encodeURIComponent(props.dashboardId)}/share`)
+    const result = await $fetch<{ enabled: boolean; expiresAt: string | null }>(`/api/boards/${encodeURIComponent(props.dashboardId)}/share`)
     enabled.value = result.enabled
+    expiresAt.value = result.expiresAt
   } catch {
     error.value = 'Le partage de ce tableau n’a pas pu être chargé.'
   } finally {
@@ -29,8 +32,12 @@ async function generateLink() {
   error.value = ''
   message.value = ''
   try {
-    const result = await $fetch<{ enabled: true; path: string }>(`/api/boards/${encodeURIComponent(props.dashboardId)}/share`, { method: 'POST' })
+    const result = await $fetch<{ enabled: true; path: string; expiresAt: string | null }>(`/api/boards/${encodeURIComponent(props.dashboardId)}/share`, {
+      method: 'POST',
+      body: { expirationDays: expirationDays.value },
+    })
     enabled.value = true
+    expiresAt.value = result.expiresAt
     shareUrl.value = new URL(result.path, window.location.origin).toString()
     message.value = 'Le nouveau lien est prêt. Tout ancien lien de partage a été désactivé.'
   } catch {
@@ -47,6 +54,7 @@ async function revokeLink() {
   try {
     await $fetch(`/api/boards/${encodeURIComponent(props.dashboardId)}/share`, { method: 'DELETE' })
     enabled.value = false
+    expiresAt.value = null
     shareUrl.value = ''
     message.value = 'Le lien public est désactivé.'
   } catch {
@@ -65,6 +73,16 @@ async function copyLink() {
     error.value = 'Copie impossible. Sélectionnez puis copiez le lien manuellement.'
   }
 }
+
+const expirationLabel = computed(() => {
+  if (!expiresAt.value) return 'sans expiration'
+  return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date(expiresAt.value))
+})
+const linkExpired = computed(() => Boolean(expiresAt.value && Date.parse(expiresAt.value) <= Date.now()))
+const expirationMessage = computed(() => {
+  if (!expiresAt.value) return 'Ce lien n’expire pas.'
+  return `${linkExpired.value ? 'Lien expiré' : 'Ce lien expire'} le ${expirationLabel.value}.`
+})
 </script>
 
 <template>
@@ -84,7 +102,8 @@ async function copyLink() {
       <p v-if="loading" class="board-share-status" role="status">Vérification du partage…</p>
       <template v-else>
         <div v-if="enabled" class="board-share-enabled">
-          <p class="board-share-state"><span class="i-ph-globe-hemisphere-west-bold" aria-hidden="true" /> Le partage est activé</p>
+          <p class="board-share-state"><span class="i-ph-globe-hemisphere-west-bold" aria-hidden="true" /> {{ linkExpired ? 'Le lien a expiré' : 'Le partage est activé' }}</p>
+          <p class="board-share-expiration">{{ expirationMessage }}</p>
           <p v-if="!shareUrl" class="board-share-note">Pour protéger le lien, il n’est pas conservé en clair. Générez un nouveau lien pour le copier ; l’ancien sera alors révoqué.</p>
           <label v-if="shareUrl" class="board-share-link-label">
             <span>Lien public</span>
@@ -92,6 +111,16 @@ async function copyLink() {
           </label>
         </div>
         <p v-else class="board-share-note">Le tableau est privé. Créez un lien public pour permettre sa consultation sans compte.</p>
+
+        <label class="board-share-expiration-control">
+          <span>{{ enabled ? 'Expiration du nouveau lien' : 'Expiration du lien' }}</span>
+          <select v-model.number="expirationDays" aria-label="Expiration du lien">
+            <option :value="7">7 jours</option>
+            <option :value="30">30 jours</option>
+            <option :value="90">90 jours</option>
+            <option :value="null">Aucune expiration</option>
+          </select>
+        </label>
 
         <p v-if="error" class="board-share-message is-error" role="alert">{{ error }}</p>
         <p v-else-if="message" class="board-share-message" role="status">{{ message }}</p>
@@ -115,6 +144,9 @@ async function copyLink() {
 .board-share-status, .board-share-note { margin: 24px 0 0; color: var(--board-text-muted); font: 13px/1.55 system-ui, sans-serif; }
 .board-share-state { display: flex; align-items: center; gap: 9px; margin: 24px 0 0; color: var(--board-accent-bright); font: 13px/1.4 system-ui, sans-serif; }
 .board-share-state span { font-size: 17px; }
+.board-share-expiration { margin: 5px 0 0 26px; color: var(--board-text-muted); font: 12px/1.5 system-ui, sans-serif; }
+.board-share-expiration-control { display: grid; gap: 8px; margin-top: 20px; color: var(--board-text-soft); font: 12px/1.4 system-ui, sans-serif; }
+.board-share-expiration-control select { box-sizing: border-box; width: 100%; height: 40px; padding: 0 10px; border: 1px solid var(--board-border-control); border-radius: 6px; background: var(--board-surface-alt); color: var(--board-text); font: 13px/1.3 system-ui, sans-serif; }
 .board-share-link-label { display: grid; gap: 8px; margin-top: 18px; color: var(--board-text-soft); font: 12px/1.4 system-ui, sans-serif; }
 .board-share-link-control { display: flex; gap: 8px; }
 .board-share-link-control input { box-sizing: border-box; min-width: 0; flex: 1; height: 40px; padding: 0 10px; border: 1px solid var(--board-border-control); border-radius: 6px; background: var(--board-surface-alt); color: var(--board-text); font: 12px/1.3 'SF Mono', 'Cascadia Code', monospace; }

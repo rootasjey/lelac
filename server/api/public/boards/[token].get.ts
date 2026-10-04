@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
     FROM dashboard_shares s
     JOIN dashboard_definitions d ON d.user_id = s.user_id AND d.dashboard_id = s.dashboard_id
     LEFT JOIN dashboards b ON b.user_id = d.user_id AND b.dashboard_id = d.dashboard_id
-    WHERE s.token_hash = ? LIMIT 1`)
+    WHERE s.token_hash = ? AND (s.expires_at IS NULL OR s.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) LIMIT 1`)
     .bind(await hashToken(token)).first<{ dashboard_id: string; title: string; config_json: string | null }>()
 
   if (!row || !isValidDashboardId(row.dashboard_id)) {

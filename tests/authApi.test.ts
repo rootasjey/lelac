@@ -111,6 +111,7 @@ function createD1TestDatabase() {
       dashboard_id TEXT NOT NULL,
       token_hash TEXT NOT NULL UNIQUE,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      expires_at TEXT,
       PRIMARY KEY (user_id, dashboard_id),
       FOREIGN KEY (user_id, dashboard_id) REFERENCES dashboard_definitions(user_id, dashboard_id) ON DELETE CASCADE
     );
@@ -422,12 +423,17 @@ describe('auth API', () => {
     ] }, 'PUT')
 
     expect((await request('/api/boards/daily/share', undefined, 'GET')).status).toBe(200)
-    expect(await (await request('/api/boards/daily/share', undefined, 'GET')).json()).toEqual({ enabled: false })
-    const created = await request('/api/boards/daily/share')
+    expect(await (await request('/api/boards/daily/share', undefined, 'GET')).json()).toEqual({ enabled: false, expiresAt: null })
+    expect((await request('/api/boards/daily/share', { expirationDays: 14 })).status).toBe(400)
+    const created = await request('/api/boards/daily/share', { expirationDays: 7 })
     expect(created.status).toBe(200)
-    const createdBody = await created.json() as { enabled: boolean; path: string }
+    const createdBody = await created.json() as { enabled: boolean; path: string; expiresAt: string }
     const token = createdBody.path.split('/').at(-1)!
     expect(createdBody.enabled).toBe(true)
+    expect(createdBody.expiresAt).toBeTruthy()
+    const expiresAt = Date.parse(createdBody.expiresAt)
+    expect(expiresAt).toBeGreaterThan(Date.now() + 6 * 24 * 60 * 60 * 1000)
+    expect(expiresAt).toBeLessThan(Date.now() + 8 * 24 * 60 * 60 * 1000)
     expect(token).toMatch(/^[A-Za-z0-9_-]{40,50}$/)
     expect(database.d1.prepare('SELECT token_hash FROM dashboard_shares WHERE dashboard_id = ?')
       .bind('daily').first<{ token_hash: string }>()?.token_hash).not.toBe(token)
@@ -445,11 +451,17 @@ describe('auth API', () => {
     expect((await request('/api/boards/daily/share', undefined, 'GET')).status).toBe(401)
 
     authenticatedTestUser = { id: 'share-owner', email: 'share-owner@example.com' }
-    const rotated = await request('/api/boards/daily/share')
-    const rotatedToken = ((await rotated.json()) as { path: string }).path.split('/').at(-1)!
+    const rotated = await request('/api/boards/daily/share', { expirationDays: null })
+    const rotatedBody = await rotated.json() as { path: string; expiresAt: string | null }
+    const rotatedToken = rotatedBody.path.split('/').at(-1)!
     expect(rotatedToken).not.toBe(token)
+    expect(rotatedBody.expiresAt).toBeNull()
     expect((await request(`/api/public/boards/${token}`, undefined, 'GET')).status).toBe(404)
     expect((await request(`/api/public/boards/${rotatedToken}`, undefined, 'GET')).status).toBe(200)
+
+    database.d1.prepare('UPDATE dashboard_shares SET expires_at = ? WHERE dashboard_id = ?')
+      .bind('2000-01-01T00:00:00.000Z', 'daily').run()
+    expect((await request(`/api/public/boards/${rotatedToken}`, undefined, 'GET')).status).toBe(404)
 
     await request('/api/boards/daily/share', undefined, 'DELETE')
     expect((await request(`/api/public/boards/${rotatedToken}`, undefined, 'GET')).status).toBe(404)
@@ -464,13 +476,15 @@ describe('auth API', () => {
       { ...defaultDashboardDefinitions[1]!, order: 1, config: defaultDashboard('tech') },
     ] }, 'PUT')
     const created = await request('/api/boards/daily/share')
-    const token = ((await created.json()) as { path: string }).path.split('/').at(-1)!
+    const createdBody = await created.json() as { path: string; expiresAt: string }
+    const token = createdBody.path.split('/').at(-1)!
+    expect(Date.parse(createdBody.expiresAt)).toBeGreaterThan(Date.now() + 29 * 24 * 60 * 60 * 1000)
 
     await request('/api/boards', { dashboards: [
       { ...defaultDashboardDefinitions[1]!, order: 0, config: defaultDashboard('tech') },
       { ...defaultDashboardDefinitions[0]!, order: 1, title: 'Mon quotidien', config: defaultDashboard('daily') },
     ] }, 'PUT')
-    expect(await (await request('/api/boards/daily/share', undefined, 'GET')).json()).toEqual({ enabled: true })
+    expect(await (await request('/api/boards/daily/share', undefined, 'GET')).json()).toMatchObject({ enabled: true })
     expect((await request(`/api/public/boards/${token}`, undefined, 'GET')).status).toBe(200)
 
     await request('/api/boards', { dashboards: [
