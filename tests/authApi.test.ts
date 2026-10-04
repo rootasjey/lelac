@@ -17,7 +17,7 @@ let authenticatedTestUser: { id: string; email: string } | null = null
 
 function installAuthGlobals() {
   for (const name of [
-    'createError', 'defineEventHandler', 'getQuery', 'getRequestHeader', 'getRequestIP',
+    'createError', 'defineEventHandler', 'getQuery', 'getRequestHeader', 'getRequestIP', 'getRouterParam',
     'getRequestURL', 'readBody', 'sendRedirect', 'setResponseHeader',
   ] as const) vi.stubGlobal(name, h3[name])
   vi.stubGlobal('hashPassword', async (password: string) => `test-hash:${password}`)
@@ -38,7 +38,7 @@ function installAuthGlobals() {
 }
 
 installAuthGlobals()
-const [registerModule, loginModule, resetModule, resetCompleteModule, verifyModule, accountModule, boardsGetModule, boardsPutModule, accountHandlePutModule, accountRouteModule] = await Promise.all([
+const [registerModule, loginModule, resetModule, resetCompleteModule, verifyModule, accountModule, boardsGetModule, boardsPutModule, accountHandlePutModule, accountRouteModule, shareStatusModule, shareCreateModule, shareDeleteModule, publicBoardModule] = await Promise.all([
   import('../server/api/auth/register.post'),
   import('../server/api/auth/login.post'),
   import('../server/api/auth/password-reset.post'),
@@ -49,6 +49,10 @@ const [registerModule, loginModule, resetModule, resetCompleteModule, verifyModu
   import('../server/api/boards.put'),
   import('../server/api/account/handle.put'),
   import('../server/api/account/route.get'),
+  import('../server/api/boards/[dashboard]/share.get'),
+  import('../server/api/boards/[dashboard]/share.post'),
+  import('../server/api/boards/[dashboard]/share.delete'),
+  import('../server/api/public/boards/[token].get'),
 ])
 const registerHandler = registerModule.default
 const loginHandler = loginModule.default
@@ -60,6 +64,10 @@ const boardsGetHandler = boardsGetModule.default
 const boardsPutHandler = boardsPutModule.default
 const accountHandlePutHandler = accountHandlePutModule.default
 const accountRouteHandler = accountRouteModule.default
+const shareStatusHandler = shareStatusModule.default
+const shareCreateHandler = shareCreateModule.default
+const shareDeleteHandler = shareDeleteModule.default
+const publicBoardHandler = publicBoardModule.default
 const { hashToken } = await import('../server/utils/auth')
 
 class SQLiteD1Statement {
@@ -98,6 +106,14 @@ function createD1TestDatabase() {
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (user_id, dashboard_id), UNIQUE (user_id, position)
     );
+    CREATE TABLE dashboard_shares (
+      user_id TEXT NOT NULL,
+      dashboard_id TEXT NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, dashboard_id),
+      FOREIGN KEY (user_id, dashboard_id) REFERENCES dashboard_definitions(user_id, dashboard_id) ON DELETE CASCADE
+    );
   `)
   const d1 = {
     prepare: (sql: string) => new SQLiteD1Statement(sqlite, sql),
@@ -135,7 +151,20 @@ function createAuthApi(db: Cloudflare.Env['DB']) {
   app.use('/api/auth/account', accountHandler)
   app.use('/api/account/handle', accountHandlePutHandler)
   app.use('/api/account/route', accountRouteHandler)
+  app.use('/api/public/boards/', h3.defineEventHandler(async (event) => {
+    const token = new URL(event.node.req.url ?? '/', 'https://lelac.test').pathname.split('/').at(-1) ?? ''
+    event.context.params = { token }
+    return publicBoardHandler(event)
+  }))
   app.use('/api/boards', h3.defineEventHandler(async (event) => {
+    const shareMatch = h3.getRequestURL(event).pathname.match(/(?:^|\/)boards\/([^/]+)\/share$/)
+    if (shareMatch) {
+      event.context.params = { dashboard: decodeURIComponent(shareMatch[1]!) }
+      if (event.method === 'GET') return shareStatusHandler(event)
+      if (event.method === 'POST') return shareCreateHandler(event)
+      if (event.method === 'DELETE') return shareDeleteHandler(event)
+      throw h3.createError({ statusCode: 405 })
+    }
     if (event.method === 'GET') return boardsGetHandler(event)
     if (event.method === 'PUT') return boardsPutHandler(event)
     throw h3.createError({ statusCode: 405, statusMessage: 'Method not allowed' })
@@ -381,6 +410,73 @@ describe('auth API', () => {
     })
     expect(database.d1.prepare('SELECT COUNT(*) AS count FROM dashboard_definitions WHERE user_id = ?')
       .bind('board-owner-b').first<{ count: number }>()?.count).toBe(0)
+  })
+
+  it('shares only the selected dashboard through a private, revocable public token', async () => {
+    database.d1.prepare('INSERT INTO users (id, email, password_hash, handle) VALUES (?, ?, ?, ?)')
+      .bind('share-owner', 'share-owner@example.com', 'test-hash:password', 'share-owner').run()
+    authenticatedTestUser = { id: 'share-owner', email: 'share-owner@example.com' }
+    await request('/api/boards', { dashboards: [
+      { ...defaultDashboardDefinitions[0]!, order: 0, config: defaultDashboard('daily') },
+      { ...defaultDashboardDefinitions[1]!, order: 1, config: defaultDashboard('tech') },
+    ] }, 'PUT')
+
+    expect((await request('/api/boards/daily/share', undefined, 'GET')).status).toBe(200)
+    expect(await (await request('/api/boards/daily/share', undefined, 'GET')).json()).toEqual({ enabled: false })
+    const created = await request('/api/boards/daily/share')
+    expect(created.status).toBe(200)
+    const createdBody = await created.json() as { enabled: boolean; path: string }
+    const token = createdBody.path.split('/').at(-1)!
+    expect(createdBody.enabled).toBe(true)
+    expect(token).toMatch(/^[A-Za-z0-9_-]{40,50}$/)
+    expect(database.d1.prepare('SELECT token_hash FROM dashboard_shares WHERE dashboard_id = ?')
+      .bind('daily').first<{ token_hash: string }>()?.token_hash).not.toBe(token)
+
+    authenticatedTestUser = null
+    const publicRead = await request(`/api/public/boards/${token}`, undefined, 'GET')
+    expect(publicRead.status).toBe(200)
+    expect(publicRead.headers.get('cache-control')).toContain('no-store')
+    expect(publicRead.headers.get('x-robots-tag')).toBe('noindex, nofollow')
+    expect(await publicRead.json()).toEqual({
+      dashboardId: 'daily',
+      title: 'Quotidien',
+      config: defaultDashboard('daily'),
+    })
+    expect((await request('/api/boards/daily/share', undefined, 'GET')).status).toBe(401)
+
+    authenticatedTestUser = { id: 'share-owner', email: 'share-owner@example.com' }
+    const rotated = await request('/api/boards/daily/share')
+    const rotatedToken = ((await rotated.json()) as { path: string }).path.split('/').at(-1)!
+    expect(rotatedToken).not.toBe(token)
+    expect((await request(`/api/public/boards/${token}`, undefined, 'GET')).status).toBe(404)
+    expect((await request(`/api/public/boards/${rotatedToken}`, undefined, 'GET')).status).toBe(200)
+
+    await request('/api/boards/daily/share', undefined, 'DELETE')
+    expect((await request(`/api/public/boards/${rotatedToken}`, undefined, 'GET')).status).toBe(404)
+  })
+
+  it('keeps a share link when board settings change and revokes it when the board is deleted', async () => {
+    database.d1.prepare('INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)')
+      .bind('share-owner', 'share-owner@example.com', 'test-hash:password').run()
+    authenticatedTestUser = { id: 'share-owner', email: 'share-owner@example.com' }
+    await request('/api/boards', { dashboards: [
+      { ...defaultDashboardDefinitions[0]!, order: 0, config: defaultDashboard('daily') },
+      { ...defaultDashboardDefinitions[1]!, order: 1, config: defaultDashboard('tech') },
+    ] }, 'PUT')
+    const created = await request('/api/boards/daily/share')
+    const token = ((await created.json()) as { path: string }).path.split('/').at(-1)!
+
+    await request('/api/boards', { dashboards: [
+      { ...defaultDashboardDefinitions[1]!, order: 0, config: defaultDashboard('tech') },
+      { ...defaultDashboardDefinitions[0]!, order: 1, title: 'Mon quotidien', config: defaultDashboard('daily') },
+    ] }, 'PUT')
+    expect(await (await request('/api/boards/daily/share', undefined, 'GET')).json()).toEqual({ enabled: true })
+    expect((await request(`/api/public/boards/${token}`, undefined, 'GET')).status).toBe(200)
+
+    await request('/api/boards', { dashboards: [
+      { ...defaultDashboardDefinitions[1]!, order: 0, config: defaultDashboard('tech') },
+    ] }, 'PUT')
+    expect((await request(`/api/public/boards/${token}`, undefined, 'GET')).status).toBe(404)
   })
 
   it('keeps account routes private and redirects a mismatched handle to the signed-in account', async () => {

@@ -377,10 +377,31 @@ export const useBoardStore = defineStore('board', () => {
 
   function setAccountHandle(handle: string) { accountHandle.value = handle }
 
+  function loadSharedDashboard(id: DashboardId, title: string, sharedConfig: BoardConfig) {
+    disableRemoteSync()
+    activeDashboard.value = id
+    dashboards.value = [{ id, title, order: 0 }]
+    config.value = JSON.parse(JSON.stringify(sharedConfig)) as BoardConfig
+    history.value = []
+    message.value = ''
+    ready.value = true
+  }
+
+  function clearSharedDashboard() {
+    disableRemoteSync()
+    activeDashboard.value = 'daily'
+    dashboards.value = defaultDashboardDefinitions.map(item => ({ ...item }))
+    config.value = defaultDashboard('daily')
+    history.value = []
+    message.value = ''
+    ready.value = false
+  }
+
   return {
     activeDashboard, dashboards, config, ready, message, history, widgets, accountHandle,
     init, setLayout, saveWidget, removeWidget, undo, createDashboard, renameDashboard,
     moveDashboard, reorderDashboard, reorderDashboards, deleteDashboard, deleteAllDashboards, resetDispositions, readAllDashboards,
     replaceAllDashboards, syncWithAccount, disableRemoteSync, setAccountHandle,
+    loadSharedDashboard, clearSharedDashboard,
   }
 })

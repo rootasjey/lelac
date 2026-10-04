@@ -1,12 +1,16 @@
 <template>
-  <main class="dashboard" :class="{ 'grid-interacting': gridInteracting }">
+  <main class="dashboard" :class="{ 'grid-interacting': gridInteracting, 'is-shared': isReadOnly }">
     <div class="board-shell">
       <header class="board-header">
-        <NuxtLink :to="store.accountHandle ? accountHomePath(store.accountHandle) : '/'" class="brand">
+        <NuxtLink v-if="!isReadOnly" :to="store.accountHandle ? accountHomePath(store.accountHandle) : '/'" class="brand">
           <span class="brand-wordmark">Le Lac</span>
           <span class="brand-tagline">Composez votre quotidien</span>
         </NuxtLink>
-        <nav class="dashboard-tabs" aria-label="Tableaux" @dragend="finishDashboardDrag">
+        <div v-else class="brand shared-brand">
+          <span class="brand-wordmark">Le Lac</span>
+          <span class="brand-tagline">Tableau partagé · {{ sharedDashboard?.title }}</span>
+        </div>
+        <nav v-if="!isReadOnly" class="dashboard-tabs" aria-label="Tableaux" @dragend="finishDashboardDrag">
           <template v-for="dashboard in store.dashboards" :key="dashboard.id">
             <div
               class="dashboard-tab-item"
@@ -50,6 +54,7 @@
                 <NButton type="button" icon label="i-ph-dots-three-vertical-bold" btn="ghost" class="dashboard-menu-trigger" aria-label="Options des tableaux" />
               </NDropdownMenuTrigger>
               <NDropdownMenuContent align="end" :side-offset="6" class="dashboard-menu-content">
+                <NDropdownMenuItem class="dashboard-menu-item" leading="i-ph-share-network-bold" @select="shareDialogOpen = true">Partager ce tableau</NDropdownMenuItem>
                 <NDropdownMenuItem class="dashboard-menu-item" leading="i-ph-sliders-horizontal-bold" @select="openDashboardManager">Gérer les tableaux</NDropdownMenuItem>
                 <NDropdownMenuSeparator class="dashboard-menu-separator" />
                 <NDropdownMenuItem class="dashboard-menu-item dashboard-menu-item-danger" leading="i-ph-trash-bold" @select="openDashboardBulkDelete">Tout supprimer…</NDropdownMenuItem>
@@ -58,12 +63,12 @@
           </div>
         </nav>
       </header>
-      <div class="board-status">
+      <div v-if="!isReadOnly" class="board-status">
         <p v-if="editing">{{ mobile ? 'Configurez vos widgets depuis leur menu.' : 'Déplacez-les par leur poignée. Ouvrez le menu pour les configurer.' }}</p>
         <span class="sr-only" role="status">{{ store.message }}</span>
       </div>
       <template v-if="store.ready">
-        <div v-if="!store.widgets.length" class="empty-board"><h2>Votre tableau attend ses premières sources.</h2><button class="native-button" @click="openWidgetPicker">Ajouter un widget</button></div>
+        <div v-if="!store.widgets.length" class="empty-board"><h2>{{ isReadOnly ? 'Ce tableau est vide.' : 'Votre tableau attend ses premières sources.' }}</h2><button v-if="!isReadOnly" class="native-button" @click="openWidgetPicker">Ajouter un widget</button></div>
         <GridLayout v-else-if="!mobile" ref="grid" :layout="layout" :col-num="12" :row-height="40" :gap="gridGap" :is-draggable="editing" :is-resizable="editing" :resize-config="resizeConfig" @update:layout="store.setLayout" @interaction-start="gridInteracting = true" @interaction-end="gridInteracting = false" @error="store.message = 'La grille a rencontré une erreur'" @operation-rejected="store.message = 'Cette position ou dimension n’est pas disponible'">
           <GridItem v-for="widget in store.widgets" :key="widget.id" :i="widget.id" drag-allow-from=".widget-drag-handle" class="board-grid-item">
             <div class="widget-shell" :data-widget-id="widget.id" :class="{ 'cinema-widget-shell': isCinemaWidget(widget.type), 'cinema-widget-resizing': editing && isCinemaWidget(widget.type) }">
@@ -107,7 +112,7 @@
         </div>
       </template>
   </div>
-    <div v-if="store.ready" class="board-control-dock" :class="{ 'is-editing': editing }" role="group" aria-label="Commandes du tableau">
+    <div v-if="store.ready && !isReadOnly" class="board-control-dock" :class="{ 'is-editing': editing }" role="group" aria-label="Commandes du tableau">
       <NTooltip v-if="editing" content="Annuler la dernière modification">
         <NButton type="button" icon label="i-ph-arrow-arc-left-bold" btn="ghost" class="dock-button" aria-label="Annuler la dernière modification" :disabled="!store.history.length" @click="store.undo" />
       </NTooltip>
@@ -122,6 +127,7 @@
         <NuxtLink :to="{ path: '/settings', query: dashboardId === 'daily' ? {} : { board: dashboardId } }" class="dock-button dock-settings" aria-label="Paramètres"><span class="i-ph-gear-six-bold" aria-hidden="true" /></NuxtLink>
       </NTooltip>
     </div>
+    <BoardShareDialog v-if="!isReadOnly" v-model:open="shareDialogOpen" :dashboard-id="dashboardId" :dashboard-title="currentDashboardTitle" />
     <BoardSettings v-if="settings" :key="settings.id" :widget="settings" :is-new="isNew" @save="save" @close="closeWidgetSettings" @remove="remove" />
     <NDialog v-model:open="dashboardManagerOpen">
       <NDialogContent class="dashboard-manager-dialog" :_dialog-overlay="{ class: 'dashboard-manager-overlay' }" :show-close="false" @close-auto-focus="restoreDashboardManagerFocus">
@@ -247,14 +253,17 @@ import BoardYouTube from './BoardYouTube.vue'
 import BoardWidgetActionsMenu from './BoardWidgetActionsMenu.vue'
 import { widgetDefaults } from '~/utils/boardConfig'
 import type { BoardWidget, DashboardDefinition, DashboardId, WidgetKind } from '~/utils/boardConfig'
+import type { BoardConfig } from '~/utils/boardConfig'
 import { accountDashboardPath, accountHomePath } from '~~/shared/utils/accountHandle'
-const props = defineProps<{ dashboardId: DashboardId }>()
+const props = defineProps<{ dashboardId: DashboardId; sharedDashboard?: { title: string; config: BoardConfig } }>()
 const store = useBoardStore()
 const route = useRoute()
+const isReadOnly = computed(() => Boolean(props.sharedDashboard))
 const dashboardId = computed(() => store.activeDashboard)
 const defaultDashboardId = computed(() => store.dashboards[0]?.id ?? 'daily')
 const currentDashboardTitle = computed(() => store.dashboards.find(item => item.id === store.activeDashboard)?.title ?? 'Tableau')
-useHead(() => ({ title: `Le Lac — ${currentDashboardTitle.value}` }))
+const shareDialogOpen = ref(false)
+useHead(() => ({ title: isReadOnly.value ? `${props.sharedDashboard?.title ?? 'Tableau'} — Tableau partagé — Le Lac` : `Le Lac — ${currentDashboardTitle.value}` }))
 const resizeConfig: ResizeConfig = { handles: ['se'] }
 const gridGap: [number, number] = [20, 20]
 const grid = ref<GridLayoutExpose>()
@@ -334,7 +343,8 @@ function isCinemaWidget(type: WidgetKind | undefined): boolean {
 const layout = computed<Layout>(() => store.widgets.map(w => ({ i: w.id, x: w.x, y: w.y, w: w.w, h: w.h, minW: 3, minH: 4, maxH: 16 })))
 const ordered = computed(() => [...store.widgets].sort((a, b) => a.y - b.y || a.x - b.x))
 watch(() => props.dashboardId, (dashboard) => {
-  store.init(dashboard)
+  if (props.sharedDashboard) store.loadSharedDashboard(dashboard, props.sharedDashboard.title, props.sharedDashboard.config)
+  else store.init(dashboard)
   editing.value = false
   gridInteracting.value = false
   settings.value = undefined
@@ -535,13 +545,17 @@ function handleShortcut(event: KeyboardEvent) {
   action()
 }
 onMounted(async () => {
-  store.init(props.dashboardId)
-  await store.syncWithAccount()
-  // Account sync can replace the dashboard list; resolve the requested ID
-  // again against that authoritative list before rendering the selected board.
-  store.init(props.dashboardId || undefined)
-  if (store.accountHandle && route.path === '/') {
-    await navigateTo(accountDashboardPath(store.accountHandle, store.activeDashboard, defaultDashboardId.value), { replace: true })
+  if (props.sharedDashboard) {
+    store.loadSharedDashboard(props.dashboardId, props.sharedDashboard.title, props.sharedDashboard.config)
+  } else {
+    store.init(props.dashboardId)
+    await store.syncWithAccount()
+    // Account sync can replace the dashboard list; resolve the requested ID
+    // again against that authoritative list before rendering the selected board.
+    store.init(props.dashboardId || undefined)
+    if (store.accountHandle && route.path === '/') {
+      await navigateTo(accountDashboardPath(store.accountHandle, store.activeDashboard, defaultDashboardId.value), { replace: true })
+    }
   }
   media = matchMedia(mobileBoardQuery)
   syncMobile()
@@ -549,9 +563,14 @@ onMounted(async () => {
   motionPreference = matchMedia('(prefers-reduced-motion: reduce)')
   syncReducedMotion()
   motionPreference.addEventListener('change', syncReducedMotion)
-  window.addEventListener('keydown', handleShortcut)
+  if (!props.sharedDashboard) window.addEventListener('keydown', handleShortcut)
 })
-onBeforeUnmount(() => { media?.removeEventListener('change', syncMobile); motionPreference?.removeEventListener('change', syncReducedMotion); window.removeEventListener('keydown', handleShortcut) })
+onBeforeUnmount(() => {
+  media?.removeEventListener('change', syncMobile)
+  motionPreference?.removeEventListener('change', syncReducedMotion)
+  window.removeEventListener('keydown', handleShortcut)
+  if (props.sharedDashboard) store.clearSharedDashboard()
+})
 function syncReducedMotion() { prefersReducedMotion.value = motionPreference?.matches ?? false }
 function configure(widget: BoardWidget) {
   settingsReturnFocus.value = [...document.querySelectorAll<HTMLElement>('.widget-shell[data-widget-id]')]
@@ -585,6 +604,7 @@ function setYoutubeAvailability(id: string, available: boolean) {
 <style scoped>
 .dashboard { --una-primary: 81% .11 90; --una-primary-foreground: 18% .02 90; background: var(--board-canvas); color: var(--board-text); min-height: 100vh; font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace; font-size: 13px; }
 .board-shell { max-width: 1440px; margin: auto; padding: 24px 32px 104px; }
+.is-shared .board-shell { padding-bottom: 32px; }
 .board-header { display: flex; align-items: center; gap: 36px; min-height: 62px; border-bottom: 1px solid var(--board-border); }
 .brand { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; color: var(--board-text); text-decoration: none; }
 .brand-wordmark { font-size: 20px; letter-spacing: -1px; line-height: 1; }

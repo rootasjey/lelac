@@ -203,6 +203,26 @@ describe('board undo', () => {
     expect(store.config).toEqual(defaultDashboard('tech'))
   })
 
+  it('loads a public dashboard as read-only ephemeral state without writing it to browser storage', () => {
+    setActivePinia(createPinia())
+    const store = useBoardStore()
+    store.init('daily')
+    const dailySnapshot = localStorage.getItem(dashboardStorageKey('daily'))
+    const sharedConfig = { ...defaultDashboard('tech'), widgets: [] }
+
+    store.loadSharedDashboard('tech', 'Aperçu public', sharedConfig)
+    expect(store.dashboards).toEqual([{ id: 'tech', title: 'Aperçu public', order: 0 }])
+    expect(store.config).toEqual(sharedConfig)
+    expect(store.ready).toBe(true)
+    expect(store.accountHandle).toBe('')
+    expect(localStorage.getItem(dashboardStorageKey('daily'))).toBe(dailySnapshot)
+    expect(localStorage.getItem(dashboardStorageKey('tech'))).toBeNull()
+
+    store.clearSharedDashboard()
+    expect(store.ready).toBe(false)
+    expect(store.dashboards.map(item => item.id)).toEqual(['daily', 'tech', 'cinema'])
+  })
+
   it('only discards a foreign account cache when the remote account has no saved dashboards', () => {
     expect(shouldDiscardForeignDashboardCache('account-a', 'account-b', false)).toBe(true)
     expect(shouldDiscardForeignDashboardCache('account-b', 'account-b', false)).toBe(false)

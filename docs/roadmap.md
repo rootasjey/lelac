@@ -32,10 +32,11 @@ This file tracks product milestones. `README.md` describes the current architect
 - Email/password registration, email verification, login, password reset and account deletion.
 - Cloudflare Worker deployment with CI checks before production deployment.
 - Cinema screenings, upcoming films, curated YouTube trailers and Netflix, Apple TV, Prime Video and Disney+ announcements.
+- Revocable, read-only public links for individual dashboards; shared pages expose only the selected board and remain isolated from account state.
 
 ## After this milestone
 
-1. **Choose the next product feature from usage.** Candidate areas include additional reliable content sources and optional public sharing.
+1. **Choose the next product feature from usage.** Candidate areas include additional reliable content sources and collaboration features beyond read-only sharing.
 
 ### Mobile review completed
 
@@ -53,4 +54,4 @@ This file tracks product milestones. `README.md` describes the current architect
 
 ## Intentionally deferred
 
-OAuth, passwordless email links, public dashboard sharing, Docker/Umbrel packaging, plugin marketplace/sandbox/SDK, and YAML editing remain deferred. Account deletion is shipped and documented in [production operations](operations.md).
+OAuth, passwordless email links, Docker/Umbrel packaging, plugin marketplace/sandbox/SDK, and YAML editing remain deferred. Account deletion is shipped and documented in [production operations](operations.md).

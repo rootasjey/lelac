@@ -13,6 +13,7 @@ Glance is the visual reference for composition, spacing, typography and restrain
 ## Initial scope
 
 - Multiple personal dashboards with working navigation.
+- Optional read-only public sharing for an individual dashboard, with revocable opaque links.
 - A polished reading experience on desktop and mobile.
 - Visual widget settings and drag-and-drop arrangement within a constrained layout.
 - Persistent dashboard configuration.
@@ -28,7 +29,7 @@ Prioritize complete everyday workflows over the number of widget types.
 | Tech | RSS feeds, weekly GitHub trends, recent uploads from selected YouTube channels |
 | Cinema | Local screenings, upcoming theatrical programming, streaming announcements and curated trailers |
 
-The three dashboards now share the same visual editing foundation. Keep GitHub trend rankings distinct from tracked repository releases, and keep local cinema screenings distinct from upcoming theatrical programming and streaming announcements.
+The three dashboards now share the same visual editing foundation. Keep GitHub trend rankings distinct from tracked repository releases, and keep local cinema screenings distinct from upcoming theatrical programming and streaming announcements. A dashboard owner can create a public read-only link for one board and revoke or rotate it at any time; other dashboards and account details remain private.
 
 ## Design and editing
 
@@ -98,7 +99,7 @@ Each milestone should be usable before expanding the scope. Validate desktop and
 
 ## Deferred
 
-OAuth, passwordless magic links, public dashboard sharing, Docker and Umbrel packaging, plugin marketplace, third-party plugin sandbox, plugin SDK, and YAML editing are deferred. Revisit them only when actual usage justifies the cost.
+OAuth, passwordless magic links, Docker and Umbrel packaging, plugin marketplace, third-party plugin sandbox, plugin SDK, and YAML editing are deferred. Revisit them only when actual usage justifies the cost.
 
 ## Local development
 

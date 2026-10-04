@@ -1,6 +1,7 @@
 const publicPaths = new Set(['/login', '/register', '/forgot-password', '/reset-password'])
 
 export default defineNuxtRouteMiddleware(async (to) => {
+  if (to.path.startsWith('/share/')) return
   if (import.meta.server) return
   const session = useUserSession()
   if (!session.ready.value) await session.fetch()

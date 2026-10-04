@@ -33,17 +33,26 @@ export function saveDashboardRows(db: Cloudflare.Env['DB'], userId: string, entr
 }
 
 export function saveDashboardCollection(db: Cloudflare.Env['DB'], userId: string, entries: Array<DashboardWrite & { title: string; position: number }>, updatedAt = new Date().toISOString()) {
+  const placeholders = entries.map(() => '?').join(', ')
+  const ids = entries.map(({ id }) => id)
   const statements = [
-    db.prepare('DELETE FROM dashboards WHERE user_id = ?').bind(userId),
-    db.prepare('DELETE FROM dashboard_definitions WHERE user_id = ?').bind(userId),
+    // Move existing positions out of the way before upserting the new order,
+    // so UNIQUE(user_id, position) never collides during a reorder.
+    db.prepare('UPDATE dashboard_definitions SET position = position + 1000000 WHERE user_id = ?').bind(userId),
   ]
   for (const entry of entries) {
     statements.push(
-      db.prepare('INSERT INTO dashboard_definitions (user_id, dashboard_id, title, position, updated_at) VALUES (?, ?, ?, ?, ?)')
+      db.prepare(`INSERT INTO dashboard_definitions (user_id, dashboard_id, title, position, updated_at) VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(user_id, dashboard_id) DO UPDATE SET title = excluded.title, position = excluded.position, updated_at = excluded.updated_at`)
         .bind(userId, entry.id, entry.title, entry.position, updatedAt),
-      db.prepare('INSERT INTO dashboards (user_id, dashboard_id, config_json, updated_at) VALUES (?, ?, ?, ?)')
+      db.prepare(`INSERT INTO dashboards (user_id, dashboard_id, config_json, updated_at) VALUES (?, ?, ?, ?)
+        ON CONFLICT(user_id, dashboard_id) DO UPDATE SET config_json = excluded.config_json, updated_at = excluded.updated_at`)
         .bind(userId, entry.id, JSON.stringify(entry.config), updatedAt),
     )
   }
+  statements.push(
+    db.prepare(`DELETE FROM dashboards WHERE user_id = ? AND dashboard_id NOT IN (${placeholders})`).bind(userId, ...ids),
+    db.prepare(`DELETE FROM dashboard_definitions WHERE user_id = ? AND dashboard_id NOT IN (${placeholders})`).bind(userId, ...ids),
+  )
   return db.batch(statements)
 }
