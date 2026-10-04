@@ -18,6 +18,7 @@ import type { BoardConfig, BoardWidget, DashboardBackup, DashboardDefinition, Da
 export const useBoardStore = defineStore('board', () => {
   const activeDashboard = ref<DashboardId>('daily')
   const dashboards = ref<DashboardDefinition[]>(defaultDashboardDefinitions.map(item => ({ ...item })))
+  const accountHandle = ref('')
   const config = ref<BoardConfig>(defaultDashboard('daily'))
   const ready = ref(false)
   const message = ref('')
@@ -336,6 +337,7 @@ export const useBoardStore = defineStore('board', () => {
     if (!userId) {
       remoteEnabled.value = false
       syncedUserId.value = ''
+      accountHandle.value = ''
       return
     }
     if (syncedUserId.value === userId && remoteEnabled.value) return
@@ -344,7 +346,8 @@ export const useBoardStore = defineStore('board', () => {
     syncedUserId.value = ''
     try {
       const localOwner = localStorage.getItem(dashboardStorageOwnerKey)
-      const result = await $fetch<{ dashboards: DashboardBackup[]; hasStoredDashboards: boolean }>('/api/boards')
+      const result = await $fetch<{ dashboards: DashboardBackup[]; hasStoredDashboards: boolean; accountHandle: string }>('/api/boards')
+      accountHandle.value = result.accountHandle
       if (result.hasStoredDashboards) {
         if (!replaceAllDashboards(result.dashboards)) throw new Error('Impossible de charger les tableaux du compte.')
       } else if (shouldDiscardForeignDashboardCache(localOwner, userId, result.hasStoredDashboards)) {
@@ -369,12 +372,15 @@ export const useBoardStore = defineStore('board', () => {
     if (remoteSaveTimer) clearTimeout(remoteSaveTimer)
     remoteEnabled.value = false
     syncedUserId.value = ''
+    accountHandle.value = ''
   }
 
+  function setAccountHandle(handle: string) { accountHandle.value = handle }
+
   return {
-    activeDashboard, dashboards, config, ready, message, history, widgets,
+    activeDashboard, dashboards, config, ready, message, history, widgets, accountHandle,
     init, setLayout, saveWidget, removeWidget, undo, createDashboard, renameDashboard,
     moveDashboard, reorderDashboard, reorderDashboards, deleteDashboard, deleteAllDashboards, resetDispositions, readAllDashboards,
-    replaceAllDashboards, syncWithAccount, disableRemoteSync,
+    replaceAllDashboards, syncWithAccount, disableRemoteSync, setAccountHandle,
   }
 })

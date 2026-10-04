@@ -2,6 +2,7 @@
 import { createConfigurationBundle, parseConfigurationBundle } from '~/utils/configTransfer'
 import type { ThemePreference } from '~/utils/configTransfer'
 import { dashboardListStorageKey, dashboardStorageKey, dashboardStorageOwnerKey } from '~/utils/boardConfig'
+import { accountDashboardPath, accountHomePath, normalizeAccountHandle } from '~~/shared/utils/accountHandle'
 
 const colorMode = useColorMode()
 const boardStore = useBoardStore()
@@ -18,6 +19,11 @@ const deletePhrase = ref('')
 const deleteError = ref('')
 const deletingAccount = ref(false)
 const transferMessage = ref('')
+const handleDraft = ref('')
+const handleMessage = ref('')
+const handleError = ref('')
+const handleReady = ref(false)
+const savingHandle = ref(false)
 const importFileInput = ref<HTMLInputElement>()
 const importDialog = ref<HTMLDialogElement>()
 const showImportConfirmation = ref(false)
@@ -31,15 +37,23 @@ const returnToBoard = computed(() => {
   const board = typeof routeBoard === 'string' && boardStore.dashboards.some(item => item.id === routeBoard)
     ? routeBoard
     : boardStore.activeDashboard
-  return board === boardStore.dashboards[0]?.id ? '/' : `/?board=${board}`
+  if (boardStore.accountHandle) return accountDashboardPath(boardStore.accountHandle, board, boardStore.dashboards[0]?.id ?? 'daily')
+  return '/'
+})
+const accountHomeUrl = computed(() => {
+  const handle = boardStore.accountHandle || normalizeAccountHandle(handleDraft.value)
+  return handle ? accountHomePath(handle) : ''
 })
 
 useHead({ title: 'Paramètres — Le Lac' })
 
-onMounted(() => {
+onMounted(async () => {
   const queryBoard = route.query.board
   boardStore.init(typeof queryBoard === 'string' ? queryBoard : undefined)
-  void boardStore.syncWithAccount()
+  handleDraft.value = boardStore.accountHandle
+  await boardStore.syncWithAccount()
+  handleDraft.value = boardStore.accountHandle
+  handleReady.value = true
 })
 
 async function logout() {
@@ -47,6 +61,29 @@ async function logout() {
   await authSession.clear()
   boardStore.disableRemoteSync()
   await navigateTo('/login')
+}
+
+async function saveAccountHandle() {
+  handleError.value = ''
+  handleMessage.value = ''
+  const handle = normalizeAccountHandle(handleDraft.value)
+  if (!handle) {
+    handleError.value = 'Utilisez 3 à 36 lettres sans accent, chiffres ou tirets.'
+    return
+  }
+
+  savingHandle.value = true
+  try {
+    const result = await $fetch<{ handle: string }>('/api/account/handle', { method: 'PUT', body: { handle } })
+    handleDraft.value = result.handle
+    boardStore.setAccountHandle(result.handle)
+    handleMessage.value = 'Votre adresse de compte a été mise à jour.'
+  } catch (error) {
+    const fetchError = error as { data?: { statusMessage?: string }; statusMessage?: string }
+    handleError.value = fetchError.data?.statusMessage || fetchError.statusMessage || 'Le pseudo n’a pas pu être enregistré.'
+  } finally {
+    savingHandle.value = false
+  }
 }
 
 async function deleteAccount() {
@@ -182,7 +219,7 @@ function importConfiguration() {
   <main class="settings-page">
     <div class="settings-shell">
       <header class="settings-header">
-        <NuxtLink to="/" class="settings-brand">Le Lac</NuxtLink>
+        <NuxtLink :to="boardStore.accountHandle ? accountHomePath(boardStore.accountHandle) : '/'" class="settings-brand">Le Lac</NuxtLink>
         <NuxtLink :to="returnToBoard" class="settings-back"><span class="i-ph-arrow-left" aria-hidden="true" />Retour au tableau</NuxtLink>
       </header>
 
@@ -203,6 +240,23 @@ function importConfiguration() {
             </div>
             <button type="button" class="reset-button" @click="logout">Se déconnecter</button>
           </div>
+          <form class="account-handle-setting" @submit.prevent="saveAccountHandle">
+            <div class="setting-copy">
+              <h3>Adresse de vos tableaux</h3>
+              <p>Cette adresse identifie votre espace sans afficher votre e-mail. Vos tableaux restent privés et nécessitent une connexion.</p>
+            </div>
+            <div class="account-handle-controls">
+              <span class="account-handle-prefix" aria-hidden="true">/@</span>
+              <input v-model="handleDraft" autocomplete="username" maxlength="36" aria-label="Pseudo de votre compte" :aria-invalid="!!handleError" :disabled="!handleReady || savingHandle">
+              <button type="submit" class="reset-button" :disabled="!handleReady || savingHandle">{{ !handleReady ? 'Chargement…' : savingHandle ? 'Enregistrement…' : 'Enregistrer' }}</button>
+            </div>
+            <p class="account-handle-preview">
+              <template v-if="accountHomeUrl">Aperçu : <NuxtLink :to="accountHomeUrl">{{ accountHomeUrl }}</NuxtLink></template>
+              <template v-else>Chargement de votre pseudo…</template>
+            </p>
+            <p v-if="handleError" class="settings-error" role="alert">{{ handleError }}</p>
+            <p v-else-if="handleMessage" class="settings-success" role="status">{{ handleMessage }}</p>
+          </form>
           <div class="setting-row account-danger-row">
             <div class="setting-copy">
               <h3>Supprimer le compte</h3>
@@ -350,6 +404,17 @@ h1 { margin: 0; color: var(--board-text); font: 500 clamp(32px, 5vw, 46px)/1.12 
 .setting-copy { min-width: 0; }
 .setting-copy h3 { margin: 0; color: var(--board-text); font-size: 14px; font-weight: 550; }
 .setting-copy p { margin: 5px 0 0; color: var(--board-text-muted); font-size: 12px; line-height: 1.5; }
+.account-handle-setting { display: grid; gap: 12px; padding: 18px 20px; border-radius: 10px; background: var(--board-surface); }
+.account-handle-controls { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.account-handle-prefix { color: var(--board-text-muted); font: 14px/1 'SF Mono', 'Cascadia Code', monospace; }
+.account-handle-controls input { box-sizing: border-box; width: min(100%, 360px); min-width: 0; height: 40px; padding: 0 11px; border: 1px solid var(--board-border-strong); border-radius: 6px; outline: none; background: var(--board-surface-alt); color: var(--board-text); font: 13px/1.4 system-ui, sans-serif; }
+.account-handle-controls input:focus-visible { border-color: var(--board-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--board-accent) 24%, transparent); }
+.account-handle-controls .reset-button { flex: 0 0 auto; }
+.account-handle-controls .reset-button:disabled { opacity: .55; cursor: wait; }
+.account-handle-preview { margin: 0; color: var(--board-text-muted); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+.account-handle-preview a { color: var(--board-accent); text-decoration: none; }
+.account-handle-preview a:hover { text-decoration: underline; }
+.settings-success { margin: 0; color: #4c8063; font-size: 12px; }
 .theme-options { display: flex; flex: 0 0 auto; gap: 8px; }
 .theme-options button { display: flex; min-width: 96px; min-height: 40px; align-items: center; justify-content: center; gap: 8px; padding: 0 12px; border: 1px solid var(--board-border); border-radius: 7px; background: transparent; color: var(--board-text-soft); font: 12px/1 system-ui, sans-serif; cursor: pointer; }
 .theme-options button:hover { background: var(--board-hover); }
@@ -402,5 +467,9 @@ h1 { margin: 0; color: var(--board-text); font: 500 clamp(32px, 5vw, 46px)/1.12 
   .transfer-actions { width: 100%; }
   .transfer-actions button { flex: 1; }
   .account-danger-row button { width: 100%; }
+  .account-handle-setting { padding: 16px; }
+  .account-handle-controls { align-items: stretch; flex-wrap: wrap; }
+  .account-handle-controls input { flex: 1 1 140px; }
+  .account-handle-controls .reset-button { flex: 1 1 100%; }
 }
 </style>

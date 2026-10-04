@@ -5,6 +5,9 @@ export default defineNuxtConfig({
   modules: ['@pinia/nuxt', '@unocss/nuxt', '@una-ui/nuxt', 'nuxt-auth-utils'],
   nitro: { preset: 'cloudflare-module' },
   runtimeConfig: {
+    session: {
+      name: 'lelac-session',
+    },
     youtubeApiKey: '',
     openrouterApiKey: '',
     public: {

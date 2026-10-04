@@ -1,0 +1,1 @@
+<template><AccountDashboardRoute /></template>

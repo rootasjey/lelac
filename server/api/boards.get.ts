@@ -6,9 +6,10 @@ export default defineEventHandler(async (event) => {
   const { user } = await requireUserSession(event)
   if (!user?.id) throw createError({ statusCode: 401, statusMessage: 'Session invalide.' })
   const db = getAuthEnv(event).DB
-  const [dashboardRows, definitionRows] = await Promise.all([
+  const [dashboardRows, definitionRows, account] = await Promise.all([
     loadDashboardRows(db, user.id),
     loadDashboardDefinitions(db, user.id),
+    db.prepare('SELECT handle FROM users WHERE id = ?').bind(user.id).first<{ handle: string }>(),
   ])
   const storedRows = (dashboardRows.results ?? []) as StoredDashboardRow[]
   const savedDefinitions = (definitionRows.results ?? []) as StoredDashboardDefinitionRow[]
@@ -25,5 +26,5 @@ export default defineEventHandler(async (event) => {
     }
     return { ...definition, order, config }
   })
-  return { dashboards, hasStoredDashboards: storedRows.length > 0 }
+  return { dashboards, hasStoredDashboards: storedRows.length > 0, accountHandle: account?.handle ?? '' }
 })

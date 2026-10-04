@@ -38,7 +38,7 @@ function installAuthGlobals() {
 }
 
 installAuthGlobals()
-const [registerModule, loginModule, resetModule, resetCompleteModule, verifyModule, accountModule, boardsGetModule, boardsPutModule] = await Promise.all([
+const [registerModule, loginModule, resetModule, resetCompleteModule, verifyModule, accountModule, boardsGetModule, boardsPutModule, accountHandlePutModule, accountRouteModule] = await Promise.all([
   import('../server/api/auth/register.post'),
   import('../server/api/auth/login.post'),
   import('../server/api/auth/password-reset.post'),
@@ -47,6 +47,8 @@ const [registerModule, loginModule, resetModule, resetCompleteModule, verifyModu
   import('../server/api/auth/account.delete'),
   import('../server/api/boards.get'),
   import('../server/api/boards.put'),
+  import('../server/api/account/handle.put'),
+  import('../server/api/account/route.get'),
 ])
 const registerHandler = registerModule.default
 const loginHandler = loginModule.default
@@ -56,6 +58,8 @@ const verifyHandler = verifyModule.default
 const accountHandler = accountModule.default
 const boardsGetHandler = boardsGetModule.default
 const boardsPutHandler = boardsPutModule.default
+const accountHandlePutHandler = accountHandlePutModule.default
+const accountRouteHandler = accountRouteModule.default
 const { hashToken } = await import('../server/utils/auth')
 
 class SQLiteD1Statement {
@@ -71,7 +75,7 @@ function createD1TestDatabase() {
   sqlite.exec(`
     PRAGMA foreign_keys = ON;
     CREATE TABLE users (
-      id TEXT PRIMARY KEY NOT NULL, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL,
+      id TEXT PRIMARY KEY NOT NULL, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, handle TEXT UNIQUE,
       email_verified_at TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
@@ -129,6 +133,8 @@ function createAuthApi(db: Cloudflare.Env['DB']) {
   app.use('/api/auth/password-reset', resetHandler)
   app.use('/api/auth/verify', verifyHandler)
   app.use('/api/auth/account', accountHandler)
+  app.use('/api/account/handle', accountHandlePutHandler)
+  app.use('/api/account/route', accountRouteHandler)
   app.use('/api/boards', h3.defineEventHandler(async (event) => {
     if (event.method === 'GET') return boardsGetHandler(event)
     if (event.method === 'PUT') return boardsPutHandler(event)
@@ -169,9 +175,10 @@ describe('auth API', () => {
     const firstBody = await first.json()
     expect(firstBody).toEqual({ ok: true, message: 'Si cette adresse peut recevoir un lien de vérification, un e-mail va être envoyé.' })
 
-    const user = database.d1.prepare('SELECT email, password_hash, email_verified_at FROM users WHERE email = ?')
-      .bind('new@example.com').first<{ email: string; password_hash: string; email_verified_at: string | null }>()
-    expect(user).toEqual({ email: 'new@example.com', password_hash: `test-hash:${password}`, email_verified_at: null })
+    const user = database.d1.prepare('SELECT email, password_hash, email_verified_at, handle FROM users WHERE email = ?')
+      .bind('new@example.com').first<{ email: string; password_hash: string; email_verified_at: string | null; handle: string }>()
+    expect(user).toMatchObject({ email: 'new@example.com', password_hash: `test-hash:${password}`, email_verified_at: null })
+    expect(user?.handle).toMatch(/^[a-z]+-[a-z]+-[abcdefghjkmnpqrstuvwxyz23456789]{4}$/)
     const tokenCount = database.d1.prepare('SELECT COUNT(*) AS count FROM auth_tokens').first<{ count: number }>()
     expect(tokenCount?.count).toBe(1)
 
@@ -374,5 +381,36 @@ describe('auth API', () => {
     })
     expect(database.d1.prepare('SELECT COUNT(*) AS count FROM dashboard_definitions WHERE user_id = ?')
       .bind('board-owner-b').first<{ count: number }>()?.count).toBe(0)
+  })
+
+  it('keeps account routes private and redirects a mismatched handle to the signed-in account', async () => {
+    expect((await request('/api/account/route?handle=%40corpinot', undefined, 'GET')).status).toBe(401)
+    database.d1.prepare('INSERT INTO users (id, email, password_hash, handle) VALUES (?, ?, ?, ?)')
+      .bind('route-owner', 'route-owner@example.com', 'test-hash:password', 'corpinot').run()
+    authenticatedTestUser = { id: 'route-owner', email: 'route-owner@example.com' }
+
+    const ownRoute = await request('/api/account/route?handle=%40corpinot&dashboard=cinema', undefined, 'GET')
+    expect(ownRoute.status).toBe(200)
+    expect(await ownRoute.json()).toEqual({ handle: 'corpinot', dashboardId: 'cinema', redirect: '' })
+
+    const mismatchedRoute = await request('/api/account/route?handle=%40someone-else&dashboard=cinema', undefined, 'GET')
+    expect(mismatchedRoute.status).toBe(200)
+    expect(await mismatchedRoute.json()).toEqual({ handle: 'corpinot', dashboardId: 'cinema', redirect: '/@corpinot/board/cinema' })
+  })
+
+  it('lets an authenticated user change their public account handle and rejects duplicates', async () => {
+    database.d1.prepare('INSERT INTO users (id, email, password_hash, handle) VALUES (?, ?, ?, ?), (?, ?, ?, ?)')
+      .bind('handle-owner', 'handle-owner@example.com', 'test-hash:password', 'old-handle', 'handle-other', 'handle-other@example.com', 'test-hash:password', 'taken-handle').run()
+    authenticatedTestUser = { id: 'handle-owner', email: 'handle-owner@example.com' }
+
+    const current = await request('/api/boards', undefined, 'GET')
+    expect(await current.json()).toMatchObject({ accountHandle: 'old-handle' })
+    const updated = await request('/api/account/handle', { handle: '  Corpinot ' }, 'PUT')
+    expect(updated.status).toBe(200)
+    expect(await updated.json()).toEqual({ handle: 'corpinot' })
+    const duplicate = await request('/api/account/handle', { handle: 'taken-handle' }, 'PUT')
+    expect(duplicate.status).toBe(409)
+    const invalid = await request('/api/account/handle', { handle: 'no/slash' }, 'PUT')
+    expect(invalid.status).toBe(400)
   })
 })

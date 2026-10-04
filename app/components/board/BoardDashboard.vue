@@ -2,7 +2,7 @@
   <main class="dashboard" :class="{ 'grid-interacting': gridInteracting }">
     <div class="board-shell">
       <header class="board-header">
-        <NuxtLink to="/" class="brand">
+        <NuxtLink :to="store.accountHandle ? accountHomePath(store.accountHandle) : '/'" class="brand">
           <span class="brand-wordmark">Le Lac</span>
           <span class="brand-tagline">Composez votre quotidien</span>
         </NuxtLink>
@@ -247,8 +247,10 @@ import BoardYouTube from './BoardYouTube.vue'
 import BoardWidgetActionsMenu from './BoardWidgetActionsMenu.vue'
 import { widgetDefaults } from '~/utils/boardConfig'
 import type { BoardWidget, DashboardDefinition, DashboardId, WidgetKind } from '~/utils/boardConfig'
+import { accountDashboardPath, accountHomePath } from '~~/shared/utils/accountHandle'
 const props = defineProps<{ dashboardId: DashboardId }>()
 const store = useBoardStore()
+const route = useRoute()
 const dashboardId = computed(() => store.activeDashboard)
 const defaultDashboardId = computed(() => store.dashboards[0]?.id ?? 'daily')
 const currentDashboardTitle = computed(() => store.dashboards.find(item => item.id === store.activeDashboard)?.title ?? 'Tableau')
@@ -358,7 +360,10 @@ function focusTabTitle(id: string) {
     input?.select()
   })
 }
-function dashboardHref(id: string) { return id === defaultDashboardId.value ? '/' : { path: '/', query: { board: id } } }
+function dashboardHref(id: string) {
+  if (store.accountHandle) return accountDashboardPath(store.accountHandle, id, defaultDashboardId.value)
+  return '/'
+}
 function temporaryDashboardTitle() {
   const titles = new Set(store.dashboards.map(item => item.title.toLocaleLowerCase('fr')))
   let title = 'Nouveau tableau'
@@ -462,7 +467,20 @@ function handleShortcut(event: KeyboardEvent) {
   event.preventDefault()
   action()
 }
-onMounted(() => { store.init(props.dashboardId); void store.syncWithAccount(); media = matchMedia(mobileBoardQuery); syncMobile(); media.addEventListener('change', syncMobile); window.addEventListener('keydown', handleShortcut) })
+onMounted(async () => {
+  store.init(props.dashboardId)
+  await store.syncWithAccount()
+  // Account sync can replace the dashboard list; resolve the requested ID
+  // again against that authoritative list before rendering the selected board.
+  store.init(props.dashboardId || undefined)
+  if (store.accountHandle && route.path === '/') {
+    await navigateTo(accountDashboardPath(store.accountHandle, store.activeDashboard, defaultDashboardId.value), { replace: true })
+  }
+  media = matchMedia(mobileBoardQuery)
+  syncMobile()
+  media.addEventListener('change', syncMobile)
+  window.addEventListener('keydown', handleShortcut)
+})
 onBeforeUnmount(() => { media?.removeEventListener('change', syncMobile); window.removeEventListener('keydown', handleShortcut) })
 function configure(widget: BoardWidget) { isNew.value = false; settings.value = JSON.parse(JSON.stringify(widget)) }
 async function add(type: WidgetKind) {

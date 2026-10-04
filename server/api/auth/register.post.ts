@@ -1,4 +1,5 @@
 import { assertAuthEmailReady, buildAuthLink, enforceAuthRateLimit, getAuthEnv, issueAuthToken, normalizeEmail, sendAuthEmail, validatePassword } from '../../utils/auth'
+import { generateReadableAccountHandle, isReadableAccountHandleUniqueConflict } from '../../utils/readableAccountHandle'
 
 const verificationLifetime = 24 * 60 * 60 * 1000
 const genericRegistrationMessage = 'Si cette adresse peut recevoir un lien de vérification, un e-mail va être envoyé.'
@@ -21,12 +22,20 @@ export default defineEventHandler(async (event) => {
   const userId = existing?.id ?? crypto.randomUUID()
   if (!existing) {
     const passwordHash = await hashPassword(body.password)
-    try {
-      await db.prepare('INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)').bind(userId, email, passwordHash).run()
-    } catch {
-      // Do not reveal whether another request registered this address concurrently.
-      return { ok: true, message: genericRegistrationMessage }
+    let created = false
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      try {
+        await db.prepare('INSERT INTO users (id, email, password_hash, handle) VALUES (?, ?, ?, ?)')
+          .bind(userId, email, passwordHash, generateReadableAccountHandle()).run()
+        created = true
+        break
+      } catch (error) {
+        if (isReadableAccountHandleUniqueConflict(error)) continue
+        // Do not reveal whether another request registered this address concurrently.
+        return { ok: true, message: genericRegistrationMessage }
+      }
     }
+    if (!created) throw createError({ statusCode: 503, statusMessage: 'Impossible de créer le compte pour le moment. Réessayez.' })
   }
 
   const token = await issueAuthToken(event, userId, 'verify-email', verificationLifetime)
