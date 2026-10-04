@@ -486,6 +486,7 @@ async function save() {
 .settings-dialog-content .clock-remove [icon-base] { width: 16px; height: 16px; }
 .settings-dialog-content .clock-add { width: 100%; margin-top: 8px; border-style: dashed; color: var(--board-text-muted); }
 .settings-dialog-footer { position: sticky; bottom: -24px; display: flex; justify-content: end; gap: 8px; flex-wrap: wrap; margin: 24px -24px -24px; padding: 16px 24px 24px; border-top: 1px solid var(--board-border); background: var(--board-surface); }
+.settings-dialog-footer > button:not(.delete-button) { min-height: 40px; }
 .settings-dialog-content .dialog-close-button { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
 .settings-dialog-content .dialog-close-button [icon-base] { width: 20px; height: 20px; }
 .settings-dialog-content .delete-button { width: 40px; height: 40px; min-width: 40px; min-height: 40px; margin-right: auto; }
@@ -496,6 +497,7 @@ async function save() {
 @keyframes clock-combobox-in { from { opacity: 0; transform: translateY(-3px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes clock-combobox-out { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(-2px) scale(.98); } }
 @media (max-width: 480px) {
-  .settings-dialog-footer > button:not(.delete-button) { flex: 1; }
+  .settings-dialog-footer { flex-direction: column; }
+  .settings-dialog-footer > button:not(.delete-button) { flex: 0 0 auto; width: 100%; min-height: 40px; }
 }
 </style>

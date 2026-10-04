@@ -66,7 +66,7 @@
         <div v-if="!store.widgets.length" class="empty-board"><h2>Votre tableau attend ses premières sources.</h2><button class="native-button" @click="openWidgetPicker">Ajouter un widget</button></div>
         <GridLayout v-else-if="!mobile" ref="grid" :layout="layout" :col-num="12" :row-height="40" :gap="gridGap" :is-draggable="editing" :is-resizable="editing" :resize-config="resizeConfig" @update:layout="store.setLayout" @interaction-start="gridInteracting = true" @interaction-end="gridInteracting = false" @error="store.message = 'La grille a rencontré une erreur'" @operation-rejected="store.message = 'Cette position ou dimension n’est pas disponible'">
           <GridItem v-for="widget in store.widgets" :key="widget.id" :i="widget.id" drag-allow-from=".widget-drag-handle" class="board-grid-item">
-            <div class="widget-shell" :class="{ 'cinema-widget-shell': isCinemaWidget(widget.type), 'cinema-widget-resizing': editing && isCinemaWidget(widget.type) }">
+            <div class="widget-shell" :data-widget-id="widget.id" :class="{ 'cinema-widget-shell': isCinemaWidget(widget.type), 'cinema-widget-resizing': editing && isCinemaWidget(widget.type) }">
               <header class="widget-titlebar">
                 <NTooltip :content="widget.title"><h2>{{ widget.title }}</h2></NTooltip>
                 <div class="widget-title-actions">
@@ -88,7 +88,7 @@
           </GridItem>
         </GridLayout>
         <div v-else class="mobile-board">
-          <div v-for="widget in ordered" :key="widget.id" class="widget-shell" :class="{ 'cinema-widget-shell': isCinemaWidget(widget.type), 'cinema-widget-resizing': editing && isCinemaWidget(widget.type) }" :style="{ height: widget.type === 'rss' || widget.type === 'github-trending' || widget.type === 'github-developers-trending' || widget.type === 'hacker-news' || widget.type === 'openrouter-models' || isCinemaWidget(widget.type) ? '486px' : '306px' }">
+          <div v-for="widget in ordered" :key="widget.id" class="widget-shell" :data-widget-id="widget.id" :class="{ 'cinema-widget-shell': isCinemaWidget(widget.type), 'cinema-widget-resizing': editing && isCinemaWidget(widget.type) }" :style="{ height: widget.type === 'rss' || widget.type === 'github-trending' || widget.type === 'github-developers-trending' || widget.type === 'hacker-news' || widget.type === 'openrouter-models' || isCinemaWidget(widget.type) ? '486px' : '306px' }">
             <header class="widget-titlebar">
               <NTooltip :content="widget.title"><h2>{{ widget.title }}</h2></NTooltip>
               <div class="widget-title-actions">
@@ -122,7 +122,7 @@
         <NuxtLink :to="{ path: '/settings', query: dashboardId === 'daily' ? {} : { board: dashboardId } }" class="dock-button dock-settings" aria-label="Paramètres"><span class="i-ph-gear-six-bold" aria-hidden="true" /></NuxtLink>
       </NTooltip>
     </div>
-    <BoardSettings v-if="settings" :key="settings.id" :widget="settings" :is-new="isNew" @save="save" @close="settings = undefined" @remove="remove" />
+    <BoardSettings v-if="settings" :key="settings.id" :widget="settings" :is-new="isNew" @save="save" @close="closeWidgetSettings" @remove="remove" />
     <NDialog v-model:open="dashboardManagerOpen">
       <NDialogContent class="dashboard-manager-dialog" :_dialog-overlay="{ class: 'dashboard-manager-overlay' }" :show-close="false">
         <div class="dashboard-manager-heading">
@@ -172,7 +172,7 @@
         </div>
       </NDialogContent>
     </NDialog>
-    <NDialog v-model:open="pickerOpen">
+    <NDialog :open="pickerOpen" @update:open="handleWidgetPickerOpenChange">
       <NDialogContent
         class="widget-picker-dialog-content"
         :_dialog-overlay="{ class: 'widget-picker-overlay' }"
@@ -183,7 +183,7 @@
         <div class="widget-picker-header">
           <NDialogTitle id="picker-title" tabindex="-1">Ajouter un widget</NDialogTitle>
           <NTooltip content="Fermer le catalogue" tooltip="black" :_tooltip-content="{ class: 'widget-picker-tooltip' }">
-            <NButton type="button" icon label="i-ph-x-bold" btn="ghost" class="widget-picker-close" aria-label="Fermer le catalogue" @click="pickerOpen = false" />
+            <NButton type="button" icon label="i-ph-x-bold" btn="ghost" class="widget-picker-close" aria-label="Fermer le catalogue" @click="closeWidgetPicker" />
           </NTooltip>
         </div>
         <label class="widget-catalog-search">
@@ -267,6 +267,8 @@ const adjustedItem = computed(() => store.widgets.find(w => w.id === adjustedId.
 const settings = ref<BoardWidget>()
 const isNew = ref(false)
 const pickerOpen = ref(false)
+const pickerReturnFocus = ref<HTMLElement | null>(null)
+const settingsReturnFocus = ref<HTMLElement | null>(null)
 const dashboardManagerOpen = ref(false)
 const dashboardBulkDeleteOpen = ref(false)
 const dashboardDeleteOpen = ref(false)
@@ -349,12 +351,35 @@ function toggleEditing() {
   if (!editing.value) gridInteracting.value = false
 }
 async function openWidgetPicker() {
+  const active = document.activeElement
+  pickerReturnFocus.value = active instanceof HTMLElement && active !== document.body
+    ? active
+    : document.querySelector<HTMLElement>('.dock-add, .dashboard-add-trigger')
   if (!editing.value) {
     editing.value = true
     await nextTick()
   }
   widgetSearch.value = ''
   pickerOpen.value = true
+}
+function restoreFocus(target: HTMLElement | null, fallback: string) {
+  void nextTick(() => {
+    const element = target?.isConnected ? target : document.querySelector<HTMLElement>(fallback)
+    element?.focus({ preventScroll: true })
+  })
+}
+function closeWidgetPicker() {
+  pickerOpen.value = false
+  restoreFocus(pickerReturnFocus.value, '.dock-add, .dashboard-add-trigger')
+}
+function handleWidgetPickerOpenChange(open: boolean) {
+  pickerOpen.value = open
+  if (!open) restoreFocus(pickerReturnFocus.value, '.dock-add, .dashboard-add-trigger')
+}
+function closeWidgetSettings() {
+  settings.value = undefined
+  restoreFocus(settingsReturnFocus.value, '.dock-add, .dashboard-add-trigger')
+  settingsReturnFocus.value = null
 }
 function focusPickerSearch(event: Event) {
   event.preventDefault()
@@ -457,6 +482,7 @@ function closeWidgetPickerOnEscape(event: KeyboardEvent) {
   event.preventDefault()
   event.stopPropagation()
   pickerOpen.value = false
+  restoreFocus(pickerReturnFocus.value, '.dock-add, .dashboard-add-trigger')
 }
 function isInteractiveTarget(target: EventTarget | null) {
   const element = target instanceof HTMLElement ? target : null
@@ -489,17 +515,25 @@ onMounted(async () => {
   window.addEventListener('keydown', handleShortcut)
 })
 onBeforeUnmount(() => { media?.removeEventListener('change', syncMobile); window.removeEventListener('keydown', handleShortcut) })
-function configure(widget: BoardWidget) { isNew.value = false; settings.value = JSON.parse(JSON.stringify(widget)) }
+function configure(widget: BoardWidget) {
+  settingsReturnFocus.value = [...document.querySelectorAll<HTMLElement>('.widget-shell[data-widget-id]')]
+    .find(element => element.dataset.widgetId === widget.id)
+    ?.querySelector<HTMLElement>('.widget-menu-trigger') ?? null
+  isNew.value = false
+  settings.value = JSON.parse(JSON.stringify(widget))
+}
 async function add(type: WidgetKind) {
   pickerOpen.value = false
+  settingsReturnFocus.value = pickerReturnFocus.value
+  pickerReturnFocus.value = null
   isNew.value = true
   const newWidget = widgetDefaults(type, crypto.randomUUID())
   await nextTick()
   settings.value = newWidget
 }
-function save(widget: BoardWidget) { if (store.saveWidget(widget)) settings.value = undefined }
+function save(widget: BoardWidget) { if (store.saveWidget(widget)) closeWidgetSettings() }
 function removeWidget(widget: BoardWidget) { store.removeWidget(widget.id) }
-function remove() { if (settings.value) { store.removeWidget(settings.value.id); settings.value = undefined } }
+function remove() { if (settings.value) { store.removeWidget(settings.value.id); settings.value = undefined; settingsReturnFocus.value = null; restoreFocus(null, '.dock-add, .dashboard-add-trigger') } }
 function openAdjustments(id: string) { adjustedId.value = id; adjustments.value?.showModal() }
 function resize(axis: 'w' | 'h', value: string) { const p = adjustedItem.value; if (p) grid.value?.resizeItem(p.id, axis === 'w' ? Number(value) : p.w, axis === 'h' ? Number(value) : p.h) }
 function readMore(id: string) { detailId.value = id; detailOpen.value = true }

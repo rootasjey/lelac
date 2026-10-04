@@ -2,7 +2,7 @@
 
 This file tracks product milestones. `README.md` describes the current architecture and shipped workflows; this page records what is complete and what remains to verify.
 
-## Current position — dashboard management polish
+## Current position — mobile and accessibility follow-up
 
 **Core milestone complete.** User-owned dashboards replace the original fixed tabs while preserving stable IDs, existing configuration, and per-account data. This pass adds quick per-tab rename/delete actions and drag-to-reorder in the management dialog; the authenticated browser review is complete on desktop and touch-sized layouts.
 
@@ -35,8 +35,15 @@ This file tracks product milestones. `README.md` describes the current architect
 
 ## After this milestone
 
-1. **Continue the accessibility and mobile review.** Check the account flows, settings and widget dialogs for further concrete gaps; prefer these over speculative features.
+1. **Finish the accessibility pass.** Check keyboard-only traversal and reduced-motion behavior across dashboard management and settings dialogs; fix concrete gaps before choosing another feature.
 2. **Choose the next product feature from usage.** Candidate areas include additional reliable content sources and optional public sharing.
+
+### Mobile review completed
+
+- [x] Check login, registration, password recovery/reset forms and account settings at 320×740 and 390×844; no horizontal overflow, and form controls retain their labels and touch size.
+- [x] Check the widget catalog, widget settings and YouTube full-list dialog at 390×844; verify catalog scrolling, city search results, and readable dialog layout.
+- [x] Return keyboard focus to the opening control when the widget catalog or settings dialog closes, including canceling a newly selected widget.
+- [x] Keep widget-settings actions at least 40px high and align their mobile visual order with keyboard order.
 
 ## Intentionally deferred
 
