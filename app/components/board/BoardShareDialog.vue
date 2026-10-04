@@ -74,6 +74,7 @@ async function copyLink() {
         <div>
           <NDialogTitle>Partager « {{ dashboardTitle }} »</NDialogTitle>
           <NDialogDescription>Toute personne qui possède le lien pourra consulter ce tableau et ses widgets. Vous pourrez désactiver le lien à tout moment.</NDialogDescription>
+          <NDialogDescription>Les réglages des widgets sont également accessibles, notamment les URL de flux RSS. Évitez d’y inclure une URL ou une clé secrète.</NDialogDescription>
         </div>
         <NTooltip content="Fermer">
           <NButton type="button" icon label="i-ph-x-bold" btn="ghost" class="board-share-close" aria-label="Fermer le partage" @click="open = false" />
