@@ -21,6 +21,8 @@ This file tracks product milestones. `README.md` describes the current architect
 - [x] Support pointer drag-to-reorder in the management dialog while retaining keyboard-accessible move controls.
 - [x] Verify the new tab menu, inline rename, deletion confirmation, keyboard shortcuts, and dialog drag interaction in the authenticated browser, including a 390px touch-sized viewport.
 - [x] Reuse the resolved account dashboard during in-app navigation to avoid flashing the route-loading screen between boards.
+- [x] Keep add/manage actions visible in the mobile tab row and bring the active tab into view on direct dashboard entry; verify at 390×844.
+- [x] Match the dashboard-manager close tooltip to the dark theme on mobile.
 
 ## Shipped foundations
 
@@ -33,7 +35,7 @@ This file tracks product milestones. `README.md` describes the current architect
 
 ## After this milestone
 
-1. **Address usability gaps surfaced by the dashboard management review.** Prefer concrete accessibility, mobile, recovery and onboarding issues over speculative features.
+1. **Continue the accessibility and mobile review.** Check the account flows, settings and widget dialogs for further concrete gaps; prefer these over speculative features.
 2. **Choose the next product feature from usage.** Candidate areas include additional reliable content sources and optional public sharing.
 
 ## Intentionally deferred

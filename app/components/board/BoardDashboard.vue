@@ -127,7 +127,7 @@
       <NDialogContent class="dashboard-manager-dialog" :_dialog-overlay="{ class: 'dashboard-manager-overlay' }" :show-close="false">
         <div class="dashboard-manager-heading">
           <div><NDialogTitle>Vos tableaux</NDialogTitle><p>Le premier s’ouvre à l’accueil. Renommez, réordonnez ou supprimez vos tableaux ici.</p></div>
-          <NTooltip content="Fermer">
+          <NTooltip content="Fermer" tooltip="black" :_tooltip-content="{ class: 'dashboard-manager-tooltip' }">
             <NButton type="button" icon label="i-ph-x-bold" btn="ghost" class="dashboard-manager-close" aria-label="Fermer la gestion des tableaux" @click="dashboardManagerOpen = false" />
           </NTooltip>
         </div>
@@ -337,6 +337,13 @@ watch(() => props.dashboardId, (dashboard) => {
 })
 let media: MediaQueryList
 const syncMobile = () => { mobile.value = media.matches }
+async function revealActiveDashboardTab() {
+  await nextTick()
+  if (!mobile.value) return
+  document.querySelector<HTMLElement>('.dashboard-tabs .board-tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+}
+watch(() => store.activeDashboard, () => { void revealActiveDashboardTab() })
+watch(mobile, isMobile => { if (isMobile) void revealActiveDashboardTab() })
 function toggleEditing() {
   editing.value = !editing.value
   if (!editing.value) gridInteracting.value = false
@@ -623,7 +630,7 @@ select { background: var(--board-surface-inset); border: 1px solid var(--board-b
 .dialog-footer { display: flex; justify-content: flex-end; margin-top: 24px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
-@media (max-width: 767px), (max-width: 900px) and (max-height: 500px) { .board-shell { padding: 12px 16px 128px; } .board-header { gap: 16px; flex-wrap: wrap; padding-bottom: 0; } .brand-wordmark { font-size: 18px; } .dashboard-tabs { order: 1; width: 100%; height: 40px; gap: 18px; overflow-x: auto; } .dashboard-tab-actions { gap: 2px; margin-left: -10px; } .dashboard-add-trigger, .dashboard-menu-trigger { flex: 0 0 36px; width: 36px; height: 36px; min-height: 36px; } .board-tab-editor input { width: 132px; max-width: 42vw; height: 32px; } .board-status { min-height: 38px; } .board-control-dock { bottom: calc(40px + env(safe-area-inset-bottom, 0px)); } }
+@media (max-width: 767px), (max-width: 900px) and (max-height: 500px) { .board-shell { padding: 12px 16px 128px; } .board-header { gap: 16px; flex-wrap: wrap; padding-bottom: 0; } .brand-wordmark { font-size: 18px; } .dashboard-tabs { position: relative; isolation: isolate; order: 1; width: 100%; height: 40px; gap: 18px; overflow-x: auto; scroll-padding-inline: 0 92px; } .dashboard-tabs .board-tab { scroll-margin-inline-end: 92px; } .dashboard-tab-actions { position: sticky; right: 0; z-index: 3; flex: 0 0 auto; gap: 2px; margin-left: auto; padding-left: 10px; background: linear-gradient(90deg, transparent, var(--board-canvas) 12px); } .dashboard-add-trigger, .dashboard-menu-trigger { flex: 0 0 36px; width: 36px; height: 36px; min-height: 36px; } .board-tab-editor input { width: 132px; max-width: 42vw; height: 32px; } .board-status { min-height: 38px; } .board-control-dock { bottom: calc(40px + env(safe-area-inset-bottom, 0px)); } }
 @media (prefers-reduced-motion: reduce) { .board-control-dock { transition: none; } }
 @media (prefers-reduced-motion: reduce) { :global(.widget-detail-dialog-overlay[data-state]), :global(.widget-detail-dialog-content[data-state]) { animation: none; } }
 .empty-board { padding: 48px 24px; text-align: center; border: 1px dashed var(--board-border-strong); }
@@ -704,6 +711,7 @@ select { background: var(--board-surface-inset); border: 1px solid var(--board-b
 ::global(.dashboard-manager-overlay[data-state='closed']) { animation: widget-picker-overlay-out 120ms ease-in both; }
 :global(.widget-picker-dialog-content #picker-title:focus) { outline: none; }
 :global(.tooltip-content.widget-picker-tooltip) { border: 1px solid var(--board-border-strong); border-radius: 6px; background: var(--board-hover-strong); color: var(--board-text); padding: 6px 10px; font: 12px/1.4 system-ui, sans-serif; box-shadow: 0 4px 12px #0008; }
+:global(.tooltip-content.dashboard-manager-tooltip) { border: 1px solid var(--board-border-strong); border-radius: 6px; background: var(--board-hover-strong); color: var(--board-text); padding: 6px 10px; font: 12px/1.4 system-ui, sans-serif; box-shadow: 0 4px 12px #0008; }
 :global(.widget-picker-dialog-content[data-state='open']) { animation: widget-picker-dialog-in 180ms ease-out both; }
 :global(.widget-picker-dialog-content[data-state='closed']) { animation: widget-picker-dialog-out 140ms ease-in both; }
 :global(.widget-picker-overlay[data-state='open']) { animation: widget-picker-overlay-in 160ms ease-out both; }
