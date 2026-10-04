@@ -12,11 +12,38 @@ const requestedHandle = computed(() => {
   return typeof value === 'string' ? value.replace(/^@/, '') : ''
 })
 
-onMounted(async () => {
+function cachedDashboardId() {
+  if (boardStore.accountHandle !== requestedHandle.value) return ''
+  const requestedDashboard = props.dashboard || boardStore.dashboards[0]?.id
+  return boardStore.dashboards.some(item => item.id === requestedDashboard) ? requestedDashboard ?? '' : ''
+}
+
+if (import.meta.client) {
+  const cachedId = cachedDashboardId()
+  if (cachedId) {
+    resolvedDashboard.value = cachedId
+    ready.value = true
+  }
+}
+
+let resolutionId = 0
+async function resolveDashboardRoute() {
+  const currentResolution = ++resolutionId
+  const cachedId = cachedDashboardId()
+  if (cachedId) {
+    resolvedDashboard.value = cachedId
+    failed.value = false
+    ready.value = true
+    return
+  }
+
+  ready.value = false
+  failed.value = false
   try {
     const result = await $fetch<{ handle: string; dashboardId: string; redirect: string }>('/api/account/route', {
       query: { handle: requestedHandle.value, dashboard: props.dashboard },
     })
+    if (currentResolution !== resolutionId) return
     if (result.redirect) {
       await navigateTo(result.redirect, { replace: true })
       return
@@ -24,8 +51,17 @@ onMounted(async () => {
     resolvedDashboard.value = result.dashboardId
     ready.value = true
   } catch {
+    if (currentResolution !== resolutionId) return
     failed.value = true
   }
+}
+
+watch([requestedHandle, () => props.dashboard], () => {
+  if (import.meta.client) void resolveDashboardRoute()
+})
+
+onMounted(() => {
+  if (!cachedDashboardId()) void resolveDashboardRoute()
 })
 </script>
 

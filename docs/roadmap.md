@@ -4,7 +4,7 @@ This file tracks product milestones. `README.md` describes the current architect
 
 ## Current position — dashboard management polish
 
-**Core milestone complete.** User-owned dashboards replace the original fixed tabs while preserving stable IDs, existing configuration, and per-account data. This pass adds quick per-tab rename/delete actions and drag-to-reorder in the management dialog; browser verification of these new interactions remains.
+**Core milestone complete.** User-owned dashboards replace the original fixed tabs while preserving stable IDs, existing configuration, and per-account data. This pass adds quick per-tab rename/delete actions and drag-to-reorder in the management dialog; the authenticated browser review is complete on desktop and touch-sized layouts.
 
 - [x] Define the collection model and versioned export format that can accept future dashboard and widget types.
 - [x] Keep old version-1 configuration exports importable.
@@ -19,7 +19,8 @@ This file tracks product milestones. `README.md` describes the current architect
 - [x] Verify authenticated account flows against production using designated test accounts; local account isolation and browser workflows are covered with disposable data.
 - [x] Add an add-dashboard action and per-tab rename/delete actions with confirmation for deletion.
 - [x] Support pointer drag-to-reorder in the management dialog while retaining keyboard-accessible move controls.
-- [ ] Verify the new tab menu and dialog drag interaction in the authenticated browser, including touch-sized layouts.
+- [x] Verify the new tab menu, inline rename, deletion confirmation, keyboard shortcuts, and dialog drag interaction in the authenticated browser, including a 390px touch-sized viewport.
+- [x] Reuse the resolved account dashboard during in-app navigation to avoid flashing the route-loading screen between boards.
 
 ## Shipped foundations
 
@@ -32,9 +33,8 @@ This file tracks product milestones. `README.md` describes the current architect
 
 ## After this milestone
 
-1. **Finish browser review of dashboard management polish.** Check hover, keyboard focus, deletion confirmation, drag ordering and small-screen behavior.
-2. **Address usability gaps surfaced by that review.** Prefer concrete accessibility, mobile, recovery and onboarding issues over speculative features.
-3. **Choose the next product feature from usage.** Candidate areas include additional reliable content sources and optional public sharing; neither is committed until this review is complete.
+1. **Address usability gaps surfaced by the dashboard management review.** Prefer concrete accessibility, mobile, recovery and onboarding issues over speculative features.
+2. **Choose the next product feature from usage.** Candidate areas include additional reliable content sources and optional public sharing.
 
 ## Intentionally deferred
 
