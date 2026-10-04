@@ -17,33 +17,59 @@ export const fetchNationalCinemaSchedule = defineCachedFunction(async (): Promis
   const rows: RawCinemaShowing[] = []
   const visitedPages = new Set<string>()
   let nextPage: string | undefined = `${CINEMA_API}?${query}`
-  let expectedTotal: number | undefined
+  let reportedTotal: number | undefined
 
-  while (nextPage) {
-    if (visitedPages.has(nextPage) || visitedPages.size >= 100) throw new Error('SCARE pagination did not finish safely.')
-    visitedPages.add(nextPage)
+  try {
+    while (nextPage) {
+      if (visitedPages.has(nextPage) || visitedPages.size >= 100) throw new Error('SCARE pagination did not finish safely.')
+      visitedPages.add(nextPage)
 
-    const response: CinemaApiResponse = await $fetch<CinemaApiResponse>(nextPage, {
-      timeout: 12_000,
-      retry: 0,
-      headers: { Accept: 'application/json', 'User-Agent': 'Le Lac cinema schedule widget' },
-    })
-    if (response.total !== undefined) {
-      if (expectedTotal !== undefined && expectedTotal !== response.total) throw new Error('SCARE result count changed during pagination.')
-      expectedTotal = response.total
-    }
-    if (Array.isArray(response.results)) rows.push(...response.results)
-
-    if (response.next) {
-      const nextUrl = new URL(response.next)
-      const apiUrl = new URL(CINEMA_API)
-      if (nextUrl.origin !== apiUrl.origin || !/^\/data-fair\/api\/v1\/datasets\/[^/]+\/lines$/.test(nextUrl.pathname)) {
-        throw new Error('SCARE returned an unexpected pagination URL.')
+      const response: CinemaApiResponse = await $fetch<CinemaApiResponse>(nextPage, {
+        timeout: 12_000,
+        retry: 0,
+        headers: { Accept: 'application/json', 'User-Agent': 'Le Lac cinema schedule widget' },
+      })
+      if (response.total !== undefined) {
+        if (reportedTotal !== undefined && reportedTotal !== response.total) {
+          console.warn('[SCARE] Dataset total changed during pagination.', {
+            firstTotal: reportedTotal,
+            pageTotal: response.total,
+            page: visitedPages.size,
+          })
+        }
+        reportedTotal ??= response.total
       }
-      nextPage = nextUrl.href
-    } else nextPage = undefined
+      if (!Array.isArray(response.results)) throw new Error('SCARE returned an invalid results page.')
+      rows.push(...response.results)
+
+      if (response.next) {
+        const nextUrl = new URL(response.next)
+        const apiUrl = new URL(CINEMA_API)
+        if (nextUrl.origin !== apiUrl.origin || !/^\/data-fair\/api\/v1\/datasets\/[^/]+\/lines$/.test(nextUrl.pathname)) {
+          throw new Error('SCARE returned an unexpected pagination URL.')
+        }
+        nextPage = nextUrl.href
+      } else nextPage = undefined
+    }
+  } catch (error) {
+    const detail = error instanceof Error ? `${error.name}: ${error.message.replace(/https?:\/\/\S+/g, '[upstream URL]')}` : 'Unknown error'
+    const statusCode = typeof error === 'object' && error !== null && 'statusCode' in error
+      ? (error as { statusCode?: unknown }).statusCode
+      : undefined
+    console.error('[SCARE] Failed to fetch the national cinema schedule.', {
+      pagesFetched: visitedPages.size,
+      rowsFetched: rows.length,
+      statusCode,
+      detail,
+    })
+    throw error
   }
 
-  if (expectedTotal !== undefined && expectedTotal > rows.length) throw new Error(`SCARE returned ${rows.length} of ${expectedTotal} upcoming showings.`)
+  if (reportedTotal !== undefined && reportedTotal !== rows.length) {
+    console.warn('[SCARE] Pagination completed with a dataset total that differs from the fetched rows.', {
+      reportedTotal,
+      rowsFetched: rows.length,
+    })
+  }
   return { rows, fetchedAt: new Date().toISOString() }
 }, { name: 'scare-national-schedule-v1', maxAge: 900, swr: true })
