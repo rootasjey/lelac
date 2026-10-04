@@ -50,9 +50,9 @@
                 <NButton type="button" icon label="i-ph-dots-three-vertical-bold" btn="ghost" class="dashboard-menu-trigger" aria-label="Options des tableaux" />
               </NDropdownMenuTrigger>
               <NDropdownMenuContent align="end" :side-offset="6" class="dashboard-menu-content">
-                <NDropdownMenuItem class="dashboard-menu-item" leading="i-ph-sliders-horizontal-bold" @select="dashboardManagerOpen = true">Gérer les tableaux</NDropdownMenuItem>
+                <NDropdownMenuItem class="dashboard-menu-item" leading="i-ph-sliders-horizontal-bold" @select="openDashboardManager">Gérer les tableaux</NDropdownMenuItem>
                 <NDropdownMenuSeparator class="dashboard-menu-separator" />
-                <NDropdownMenuItem class="dashboard-menu-item dashboard-menu-item-danger" leading="i-ph-trash-bold" @select="dashboardBulkDeleteOpen = true">Tout supprimer…</NDropdownMenuItem>
+                <NDropdownMenuItem class="dashboard-menu-item dashboard-menu-item-danger" leading="i-ph-trash-bold" @select="openDashboardBulkDelete">Tout supprimer…</NDropdownMenuItem>
               </NDropdownMenuContent>
             </NDropdownMenuRoot>
           </div>
@@ -124,14 +124,14 @@
     </div>
     <BoardSettings v-if="settings" :key="settings.id" :widget="settings" :is-new="isNew" @save="save" @close="closeWidgetSettings" @remove="remove" />
     <NDialog v-model:open="dashboardManagerOpen">
-      <NDialogContent class="dashboard-manager-dialog" :_dialog-overlay="{ class: 'dashboard-manager-overlay' }" :show-close="false">
+      <NDialogContent class="dashboard-manager-dialog" :_dialog-overlay="{ class: 'dashboard-manager-overlay' }" :show-close="false" @close-auto-focus="restoreDashboardManagerFocus">
         <div class="dashboard-manager-heading">
           <div><NDialogTitle>Vos tableaux</NDialogTitle><p>Le premier s’ouvre à l’accueil. Renommez, réordonnez ou supprimez vos tableaux ici.</p></div>
           <NTooltip content="Fermer" tooltip="black" :_tooltip-content="{ class: 'dashboard-manager-tooltip' }">
             <NButton type="button" icon label="i-ph-x-bold" btn="ghost" class="dashboard-manager-close" aria-label="Fermer la gestion des tableaux" @click="dashboardManagerOpen = false" />
           </NTooltip>
         </div>
-        <VueDraggable v-model="managedDashboards" class="dashboard-manager-list" item-key="id" handle=".dashboard-manager-grip" :animation="160" ghost-class="dashboard-manager-row-ghost" chosen-class="dashboard-manager-row-chosen" drag-class="dashboard-manager-row-dragging">
+        <VueDraggable v-model="managedDashboards" class="dashboard-manager-list" item-key="id" handle=".dashboard-manager-grip" :animation="prefersReducedMotion ? 0 : 160" ghost-class="dashboard-manager-row-ghost" chosen-class="dashboard-manager-row-chosen" drag-class="dashboard-manager-row-dragging">
           <div v-for="(dashboard, index) in managedDashboards" :key="dashboard.id" class="dashboard-manager-row">
             <span class="dashboard-manager-grip i-ph-dots-six-vertical-bold" aria-hidden="true" title="Faire glisser pour réordonner" />
             <label class="sr-only" :for="`dashboard-name-${dashboard.id}`">Nom du tableau {{ dashboard.title }}</label>
@@ -153,7 +153,7 @@
       </NDialogContent>
     </NDialog>
     <NDialog v-model:open="dashboardDeleteOpen">
-      <NDialogContent class="dashboard-delete-dialog" :_dialog-overlay="{ class: 'dashboard-manager-overlay' }" :show-close="false">
+      <NDialogContent class="dashboard-delete-dialog" :_dialog-overlay="{ class: 'dashboard-manager-overlay' }" :show-close="false" @close-auto-focus="restoreDashboardDeleteFocus">
         <NDialogTitle>Supprimer « {{ dashboardDeleteTitle }} » ?</NDialogTitle>
         <p>Ce tableau et ses widgets seront supprimés. Cette action ne peut pas être annulée.</p>
         <div class="dashboard-bulk-delete-actions">
@@ -163,7 +163,7 @@
       </NDialogContent>
     </NDialog>
     <NDialog v-model:open="dashboardBulkDeleteOpen">
-      <NDialogContent class="dashboard-bulk-delete-dialog" :_dialog-overlay="{ class: 'dashboard-manager-overlay' }" :show-close="false">
+      <NDialogContent class="dashboard-bulk-delete-dialog" :_dialog-overlay="{ class: 'dashboard-manager-overlay' }" :show-close="false" @close-auto-focus="restoreDashboardBulkDeleteFocus">
         <NDialogTitle>Supprimer tous les tableaux ?</NDialogTitle>
         <p>Tous les tableaux et leurs widgets seront supprimés. « {{ currentDashboardTitle }} » restera seul, vide, pour que vous puissiez repartir de zéro.</p>
         <div class="dashboard-bulk-delete-actions">
@@ -272,6 +272,11 @@ const settingsReturnFocus = ref<HTMLElement | null>(null)
 const dashboardManagerOpen = ref(false)
 const dashboardBulkDeleteOpen = ref(false)
 const dashboardDeleteOpen = ref(false)
+const dashboardManagerReturnFocus = ref<HTMLElement | null>(null)
+const dashboardDeleteReturnFocus = ref<HTMLElement | null>(null)
+const dashboardBulkDeleteReturnFocus = ref<HTMLElement | null>(null)
+const prefersReducedMotion = ref(false)
+let motionPreference: MediaQueryList | undefined
 const dashboardDeleteTarget = ref('')
 const dashboardDeleteTitle = computed(() => store.dashboards.find(item => item.id === dashboardDeleteTarget.value)?.title ?? 'ce tableau')
 const managedDashboards = computed<DashboardDefinition[]>({
@@ -368,6 +373,34 @@ function restoreFocus(target: HTMLElement | null, fallback: string) {
     element?.focus({ preventScroll: true })
   })
 }
+function captureReturnFocus() {
+  const active = document.activeElement
+  return active instanceof HTMLElement && active !== document.body ? active : null
+}
+function restoreDialogFocus(event: Event, target: HTMLElement | null, fallback: string) {
+  event.preventDefault()
+  restoreFocus(target, fallback)
+}
+function openDashboardManager() {
+  dashboardManagerReturnFocus.value = captureReturnFocus()
+  dashboardManagerOpen.value = true
+}
+function restoreDashboardManagerFocus(event: Event) {
+  restoreDialogFocus(event, dashboardManagerReturnFocus.value, 'button[aria-label="Options des tableaux"]')
+  dashboardManagerReturnFocus.value = null
+}
+function openDashboardBulkDelete() {
+  dashboardBulkDeleteReturnFocus.value = captureReturnFocus()
+  dashboardBulkDeleteOpen.value = true
+}
+function restoreDashboardBulkDeleteFocus(event: Event) {
+  restoreDialogFocus(event, dashboardBulkDeleteReturnFocus.value, 'button[aria-label="Options des tableaux"]')
+  dashboardBulkDeleteReturnFocus.value = null
+}
+function restoreDashboardDeleteFocus(event: Event) {
+  restoreDialogFocus(event, dashboardDeleteReturnFocus.value, 'button[aria-label="Options des tableaux"]')
+  dashboardDeleteReturnFocus.value = null
+}
 function closeWidgetPicker() {
   pickerOpen.value = false
   restoreFocus(pickerReturnFocus.value, '.dock-add, .dashboard-add-trigger')
@@ -459,6 +492,7 @@ async function deleteDashboard(id: string) {
   if (wasActive) await navigateTo(dashboardHref(store.activeDashboard))
 }
 function openDashboardDelete(id: string) {
+  dashboardDeleteReturnFocus.value = captureReturnFocus()
   dashboardDeleteTarget.value = id
   dashboardDeleteOpen.value = true
 }
@@ -512,9 +546,13 @@ onMounted(async () => {
   media = matchMedia(mobileBoardQuery)
   syncMobile()
   media.addEventListener('change', syncMobile)
+  motionPreference = matchMedia('(prefers-reduced-motion: reduce)')
+  syncReducedMotion()
+  motionPreference.addEventListener('change', syncReducedMotion)
   window.addEventListener('keydown', handleShortcut)
 })
-onBeforeUnmount(() => { media?.removeEventListener('change', syncMobile); window.removeEventListener('keydown', handleShortcut) })
+onBeforeUnmount(() => { media?.removeEventListener('change', syncMobile); motionPreference?.removeEventListener('change', syncReducedMotion); window.removeEventListener('keydown', handleShortcut) })
+function syncReducedMotion() { prefersReducedMotion.value = motionPreference?.matches ?? false }
 function configure(widget: BoardWidget) {
   settingsReturnFocus.value = [...document.querySelectorAll<HTMLElement>('.widget-shell[data-widget-id]')]
     .find(element => element.dataset.widgetId === widget.id)
@@ -666,7 +704,7 @@ select { background: var(--board-surface-inset); border: 1px solid var(--board-b
 
 @media (max-width: 767px), (max-width: 900px) and (max-height: 500px) { .board-shell { padding: 12px 16px 128px; } .board-header { gap: 16px; flex-wrap: wrap; padding-bottom: 0; } .brand-wordmark { font-size: 18px; } .dashboard-tabs { position: relative; isolation: isolate; order: 1; width: 100%; height: 40px; gap: 18px; overflow-x: auto; scroll-padding-inline: 0 92px; } .dashboard-tabs .board-tab { scroll-margin-inline-end: 92px; } .dashboard-tab-actions { position: sticky; right: 0; z-index: 3; flex: 0 0 auto; gap: 2px; margin-left: auto; padding-left: 10px; background: linear-gradient(90deg, transparent, var(--board-canvas) 12px); } .dashboard-add-trigger, .dashboard-menu-trigger { flex: 0 0 36px; width: 36px; height: 36px; min-height: 36px; } .board-tab-editor input { width: 132px; max-width: 42vw; height: 32px; } .board-status { min-height: 38px; } .board-control-dock { bottom: calc(40px + env(safe-area-inset-bottom, 0px)); } }
 @media (prefers-reduced-motion: reduce) { .board-control-dock { transition: none; } }
-@media (prefers-reduced-motion: reduce) { :global(.widget-detail-dialog-overlay[data-state]), :global(.widget-detail-dialog-content[data-state]) { animation: none; } }
+@media (prefers-reduced-motion: reduce) { :global(.widget-detail-dialog-overlay[data-state]), :global(.widget-detail-dialog-content[data-state]) { animation-duration: 1ms; animation-delay: 0s; animation-timing-function: step-end; } }
 .empty-board { padding: 48px 24px; text-align: center; border: 1px dashed var(--board-border-strong); }
 .empty-board button { margin-top: 24px; }
 .widget-picker-header { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
@@ -756,6 +794,5 @@ select { background: var(--board-surface-inset); border: 1px solid var(--board-b
 @keyframes widget-picker-dialog-out { from { opacity: 1; transform: translate(-50%, -50%) scale(1); } to { opacity: 0; transform: translate(-50%, -48%) scale(.985); } }
 @media (max-width: 560px) { :global(.widget-picker-dialog-content) { width: calc(100vw - 24px); height: min(86dvh, 720px); padding: 18px; } .widget-catalog { grid-template-columns: 1fr; gap: 8px; } .widget-catalog-card { padding: 12px; } }
 @media (max-width: 560px) { :global(.dashboard-manager-dialog) { width: calc(100vw - 24px); max-height: 88dvh; padding: 18px; gap: 16px; } .dashboard-manager-row { grid-template-columns: 16px minmax(0, 1fr) auto; gap: 4px; padding: 5px; } .dashboard-row-action { width: 32px; height: 32px; min-height: 32px; } }
-@media (prefers-reduced-motion: reduce) { :global(.widget-picker-dialog-content[data-state]), :global(.widget-picker-overlay[data-state]) { animation: none; } }
-@media (prefers-reduced-motion: reduce) { :global(.dashboard-manager-dialog[data-state]), :global(.dashboard-manager-overlay[data-state]) { animation: none; } }
+@media (prefers-reduced-motion: reduce) { :global(.widget-picker-dialog-content[data-state]), :global(.widget-picker-overlay[data-state]), :global(.dashboard-manager-dialog[data-state]), :global(.dashboard-manager-overlay[data-state]), :global(.dashboard-delete-dialog[data-state]), :global(.dashboard-bulk-delete-dialog[data-state]), :global(.dashboard-menu-content[data-state]) { animation-duration: 1ms; animation-delay: 0s; animation-timing-function: step-end; } }
 </style>

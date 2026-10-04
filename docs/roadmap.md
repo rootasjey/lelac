@@ -2,7 +2,7 @@
 
 This file tracks product milestones. `README.md` describes the current architecture and shipped workflows; this page records what is complete and what remains to verify.
 
-## Current position — mobile and accessibility follow-up
+## Current position — product follow-up
 
 **Core milestone complete.** User-owned dashboards replace the original fixed tabs while preserving stable IDs, existing configuration, and per-account data. This pass adds quick per-tab rename/delete actions and drag-to-reorder in the management dialog; the authenticated browser review is complete on desktop and touch-sized layouts.
 
@@ -35,8 +35,7 @@ This file tracks product milestones. `README.md` describes the current architect
 
 ## After this milestone
 
-1. **Finish the accessibility pass.** Check keyboard-only traversal and reduced-motion behavior across dashboard management and settings dialogs; fix concrete gaps before choosing another feature.
-2. **Choose the next product feature from usage.** Candidate areas include additional reliable content sources and optional public sharing.
+1. **Choose the next product feature from usage.** Candidate areas include additional reliable content sources and optional public sharing.
 
 ### Mobile review completed
 
@@ -44,6 +43,13 @@ This file tracks product milestones. `README.md` describes the current architect
 - [x] Check the widget catalog, widget settings and YouTube full-list dialog at 390×844; verify catalog scrolling, city search results, and readable dialog layout.
 - [x] Return keyboard focus to the opening control when the widget catalog or settings dialog closes, including canceling a newly selected widget.
 - [x] Keep widget-settings actions at least 40px high and align their mobile visual order with keyboard order.
+
+### Keyboard and reduced-motion review completed
+
+- [x] Verify keyboard traversal and focus containment in dashboard management; use the move controls and return focus to the opener after closing.
+- [x] Verify the `A` and `E` shortcuts, search autofocus, and that shortcuts do not fire while a dialog or input is active.
+- [x] Verify widget settings and delete confirmations can be opened, canceled, and closed with the keyboard, restoring focus without saving or deleting.
+- [x] Honor reduced motion in dashboard, widget settings, and confirmation dialogs; keep dialog close animations lifecycle-safe and disable dashboard drag animation.
 
 ## Intentionally deferred
 

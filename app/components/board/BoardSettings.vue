@@ -415,6 +415,10 @@ async function save() {
 .settings-dialog-overlay[data-state='closed'] { animation: settings-dialog-fade-out 120ms ease-in; }
 .settings-dialog-content[data-state='open'] { animation: settings-dialog-in 180ms ease-out; }
 .settings-dialog-content[data-state='closed'] { animation: settings-dialog-out 120ms ease-in; }
+@media (prefers-reduced-motion: reduce) {
+  .settings-dialog-overlay[data-state], .settings-dialog-content[data-state],
+  .clock-combobox-list[data-state], .cinema-combobox-list[data-state] { animation-duration: 1ms; animation-delay: 0s; animation-timing-function: step-end; }
+}
 @keyframes settings-dialog-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes settings-dialog-fade-out { from { opacity: 1; } to { opacity: 0; } }
 @keyframes settings-dialog-in { from { opacity: 0; transform: translate(-50%, -48%) scale(.96); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
