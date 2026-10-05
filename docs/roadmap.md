@@ -33,6 +33,7 @@ This file tracks product milestones. `README.md` describes the current architect
 - Cloudflare Worker deployment with CI checks before production deployment.
 - Cinema screenings, upcoming films, curated YouTube trailers and Netflix, Apple TV, Prime Video and Disney+ announcements.
 - Revocable, read-only public links for individual dashboards; shared pages expose only the selected board and remain isolated from account state.
+- Optional share-link expiration; verified in production for anonymous access before expiry and rejection after expiry, then cleaned up the disposable test dashboard.
 
 ## After this milestone
 

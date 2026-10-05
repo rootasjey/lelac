@@ -38,7 +38,7 @@ function installAuthGlobals() {
 }
 
 installAuthGlobals()
-const [registerModule, loginModule, resetModule, resetCompleteModule, verifyModule, accountModule, boardsGetModule, boardsPutModule, accountHandlePutModule, accountRouteModule, shareStatusModule, shareCreateModule, shareDeleteModule, publicBoardModule] = await Promise.all([
+const [registerModule, loginModule, resetModule, resetCompleteModule, verifyModule, accountModule, boardsGetModule, boardsPutModule, accountHandlePutModule, accountRouteModule, shareStatusModule, shareCreateModule, shareDeleteModule, publicBoardModule, publicUnlockModule] = await Promise.all([
   import('../server/api/auth/register.post'),
   import('../server/api/auth/login.post'),
   import('../server/api/auth/password-reset.post'),
@@ -53,6 +53,7 @@ const [registerModule, loginModule, resetModule, resetCompleteModule, verifyModu
   import('../server/api/boards/[dashboard]/share.post'),
   import('../server/api/boards/[dashboard]/share.delete'),
   import('../server/api/public/boards/[token].get'),
+  import('../server/api/public/boards/[token]/unlock.post'),
 ])
 const registerHandler = registerModule.default
 const loginHandler = loginModule.default
@@ -68,6 +69,7 @@ const shareStatusHandler = shareStatusModule.default
 const shareCreateHandler = shareCreateModule.default
 const shareDeleteHandler = shareDeleteModule.default
 const publicBoardHandler = publicBoardModule.default
+const publicUnlockHandler = publicUnlockModule.default
 const { hashToken } = await import('../server/utils/auth')
 
 class SQLiteD1Statement {
@@ -112,8 +114,16 @@ function createD1TestDatabase() {
       token_hash TEXT NOT NULL UNIQUE,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       expires_at TEXT,
+      password_salt TEXT,
+      password_hash TEXT,
       PRIMARY KEY (user_id, dashboard_id),
       FOREIGN KEY (user_id, dashboard_id) REFERENCES dashboard_definitions(user_id, dashboard_id) ON DELETE CASCADE
+    );
+    CREATE TABLE dashboard_share_access_sessions (
+      user_id TEXT NOT NULL, dashboard_id TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, dashboard_id, token_hash),
+      FOREIGN KEY (user_id, dashboard_id) REFERENCES dashboard_shares(user_id, dashboard_id) ON DELETE CASCADE
     );
   `)
   const d1 = {
@@ -153,8 +163,11 @@ function createAuthApi(db: Cloudflare.Env['DB']) {
   app.use('/api/account/handle', accountHandlePutHandler)
   app.use('/api/account/route', accountRouteHandler)
   app.use('/api/public/boards/', h3.defineEventHandler(async (event) => {
-    const token = new URL(event.node.req.url ?? '/', 'https://lelac.test').pathname.split('/').at(-1) ?? ''
+    const segments = new URL(event.node.req.url ?? '/', 'https://lelac.test').pathname.split('/')
+    const unlock = segments.at(-1) === 'unlock'
+    const token = (unlock ? segments.at(-2) : segments.at(-1)) ?? ''
     event.context.params = { token }
+    if (unlock && event.method === 'POST') return publicUnlockHandler(event)
     return publicBoardHandler(event)
   }))
   app.use('/api/boards', h3.defineEventHandler(async (event) => {
@@ -171,9 +184,9 @@ function createAuthApi(db: Cloudflare.Env['DB']) {
     throw h3.createError({ statusCode: 405, statusMessage: 'Method not allowed' })
   }))
   const handle = h3.toWebHandler(app)
-  return (path: string, body?: unknown, method = 'POST') => handle(new Request(`https://lelac.test${path}`, {
+  return (path: string, body?: unknown, method = 'POST', extraHeaders: Record<string, string> = {}) => handle(new Request(`https://lelac.test${path}`, {
     method,
-    headers: { ...(body === undefined ? {} : { 'content-type': 'application/json' }), 'cf-connecting-ip': '203.0.113.10' },
+    headers: { ...(body === undefined ? {} : { 'content-type': 'application/json' }), 'cf-connecting-ip': '203.0.113.10', ...extraHeaders },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   }))
 }
@@ -423,7 +436,7 @@ describe('auth API', () => {
     ] }, 'PUT')
 
     expect((await request('/api/boards/daily/share', undefined, 'GET')).status).toBe(200)
-    expect(await (await request('/api/boards/daily/share', undefined, 'GET')).json()).toEqual({ enabled: false, expiresAt: null })
+    expect(await (await request('/api/boards/daily/share', undefined, 'GET')).json()).toEqual({ enabled: false, expiresAt: null, passwordProtected: false })
     expect((await request('/api/boards/daily/share', { expirationDays: 14 })).status).toBe(400)
     const created = await request('/api/boards/daily/share', { expirationDays: 7 })
     expect(created.status).toBe(200)
@@ -465,6 +478,75 @@ describe('auth API', () => {
 
     await request('/api/boards/daily/share', undefined, 'DELETE')
     expect((await request(`/api/public/boards/${rotatedToken}`, undefined, 'GET')).status).toBe(404)
+  })
+
+  it('protects a shared dashboard with a password and a scoped HttpOnly access cookie', async () => {
+    database.d1.prepare('INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)')
+      .bind('share-owner', 'share-owner@example.com', 'test-hash:password').run()
+    authenticatedTestUser = { id: 'share-owner', email: 'share-owner@example.com' }
+    await request('/api/boards', { dashboards: [
+      { ...defaultDashboardDefinitions[0]!, order: 0, config: defaultDashboard('daily') },
+    ] }, 'PUT')
+
+    const created = await request('/api/boards/daily/share', {
+      expirationDays: 7,
+      protectWithPassword: true,
+      password: 'lake-view-passphrase',
+    })
+    expect(created.status).toBe(200)
+    const createdBody = await created.json() as { enabled: boolean; passwordProtected: boolean; path: string }
+    expect(createdBody).toMatchObject({ enabled: true, passwordProtected: true })
+    const token = createdBody.path.split('/').at(-1)!
+    const shareRow = database.d1.prepare('SELECT password_salt, password_hash FROM dashboard_shares WHERE dashboard_id = ?')
+      .bind('daily').first<{ password_salt: string; password_hash: string }>()
+    expect(shareRow?.password_hash).not.toContain('lake-view-passphrase')
+    expect(shareRow?.password_salt).toMatch(/^[0-9a-f]{32}$/)
+    expect(shareRow?.password_hash).toMatch(/^[0-9a-f]{64}$/)
+
+    authenticatedTestUser = null
+    const locked = await request(`/api/public/boards/${token}`, undefined, 'GET')
+    expect(locked.status).toBe(401)
+    expect(locked.headers.get('cache-control')).toContain('no-store')
+
+    const wrongPassword = await request(`/api/public/boards/${token}/unlock`, { password: 'wrong-passphrase' })
+    expect(wrongPassword.status).toBe(401)
+    const unlocked = await request(`/api/public/boards/${token}/unlock`, { password: 'lake-view-passphrase' })
+    expect(unlocked.status).toBe(200)
+    const cookie = unlocked.headers.get('set-cookie')!
+    expect(cookie).toContain('HttpOnly')
+    expect(cookie).toContain('SameSite=Lax')
+    expect(cookie).toContain(`/api/public/boards/${token}`)
+    const cookiePair = cookie.split(';', 1)[0]!
+    expect((await request(`/api/public/boards/${token}`, undefined, 'GET', { cookie: cookiePair })).status).toBe(200)
+
+    for (let attempt = 0; attempt < 8; attempt++) {
+      expect((await request(`/api/public/boards/${token}/unlock`, { password: 'wrong-passphrase' })).status).toBe(401)
+    }
+    const rateLimited = await request(`/api/public/boards/${token}/unlock`, { password: 'wrong-passphrase' })
+    expect(rateLimited.status).toBe(429)
+    expect(rateLimited.headers.get('retry-after')).toBeTruthy()
+
+    const shortExpiry = new Date(Date.now() + 60_000).toISOString()
+    database.d1.prepare('UPDATE dashboard_shares SET expires_at = ? WHERE dashboard_id = ?').bind(shortExpiry, 'daily').run()
+    const shortLivedUnlock = await request(`/api/public/boards/${token}/unlock`, { password: 'lake-view-passphrase' }, 'POST', { 'cf-connecting-ip': '203.0.113.11' })
+    expect(shortLivedUnlock.status).toBe(200)
+    const shortLivedCookie = shortLivedUnlock.headers.get('set-cookie')!
+    const maxAge = Number(shortLivedCookie.match(/Max-Age=(\d+)/i)?.[1])
+    expect(maxAge).toBeGreaterThan(0)
+    expect(maxAge).toBeLessThanOrEqual(60)
+
+    database.d1.prepare('UPDATE dashboard_shares SET expires_at = ? WHERE dashboard_id = ?')
+      .bind('2000-01-01T00:00:00.000Z', 'daily').run()
+    expect((await request(`/api/public/boards/${token}`, undefined, 'GET', { cookie: shortLivedCookie.split(';', 1)[0]! })).status).toBe(404)
+
+    authenticatedTestUser = { id: 'share-owner', email: 'share-owner@example.com' }
+    expect(await (await request('/api/boards/daily/share', undefined, 'GET')).json()).toMatchObject({ enabled: true, passwordProtected: true })
+    const replacement = await request('/api/boards/daily/share', { expirationDays: null, protectWithPassword: false })
+    const replacementToken = (await replacement.json() as { path: string }).path.split('/').at(-1)!
+    expect((await request(`/api/public/boards/${token}`, undefined, 'GET', { cookie: cookiePair })).status).toBe(404)
+    expect((await request(`/api/public/boards/${replacementToken}`, undefined, 'GET')).status).toBe(200)
+    expect(database.d1.prepare('SELECT COUNT(*) AS count FROM dashboard_share_access_sessions WHERE dashboard_id = ?')
+      .bind('daily').first<{ count: number }>()?.count).toBe(0)
   })
 
   it('keeps a share link when board settings change and revokes it when the board is deleted', async () => {

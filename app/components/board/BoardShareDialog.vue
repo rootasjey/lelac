@@ -2,6 +2,9 @@
 const props = defineProps<{ dashboardId: string; dashboardTitle: string }>()
 const open = defineModel<boolean>('open', { default: false })
 const enabled = ref(false)
+const passwordProtected = ref(false)
+const protectWithPassword = ref(false)
+const sharePassword = ref('')
 const shareUrl = ref('')
 const expiresAt = ref<string | null>(null)
 const expirationDays = ref<number | null>(30)
@@ -9,17 +12,25 @@ const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
 const message = ref('')
+const sharePasswordBytes = computed(() => new TextEncoder().encode(sharePassword.value).byteLength)
+const sharePasswordValid = computed(() => sharePasswordBytes.value >= 12 && sharePasswordBytes.value <= 128)
 
 watch(open, async (isOpen) => {
-  if (!isOpen) return
+  if (!isOpen) {
+    sharePassword.value = ''
+    return
+  }
   shareUrl.value = ''
   error.value = ''
   message.value = ''
+  sharePassword.value = ''
   loading.value = true
   try {
-    const result = await $fetch<{ enabled: boolean; expiresAt: string | null }>(`/api/boards/${encodeURIComponent(props.dashboardId)}/share`)
+    const result = await $fetch<{ enabled: boolean; expiresAt: string | null; passwordProtected: boolean }>(`/api/boards/${encodeURIComponent(props.dashboardId)}/share`)
     enabled.value = result.enabled
     expiresAt.value = result.expiresAt
+    passwordProtected.value = result.passwordProtected
+    protectWithPassword.value = result.passwordProtected
   } catch {
     error.value = 'Le partage de ce tableau n’a pas pu être chargé.'
   } finally {
@@ -28,16 +39,26 @@ watch(open, async (isOpen) => {
 })
 
 async function generateLink() {
+  if (protectWithPassword.value && !sharePasswordValid.value) {
+    error.value = 'Le mot de passe doit contenir entre 12 et 128 octets UTF-8.'
+    return
+  }
   saving.value = true
   error.value = ''
   message.value = ''
   try {
-    const result = await $fetch<{ enabled: true; path: string; expiresAt: string | null }>(`/api/boards/${encodeURIComponent(props.dashboardId)}/share`, {
+    const result = await $fetch<{ enabled: true; path: string; expiresAt: string | null; passwordProtected: boolean }>(`/api/boards/${encodeURIComponent(props.dashboardId)}/share`, {
       method: 'POST',
-      body: { expirationDays: expirationDays.value },
+      body: {
+        expirationDays: expirationDays.value,
+        protectWithPassword: protectWithPassword.value,
+        ...(protectWithPassword.value ? { password: sharePassword.value } : {}),
+      },
     })
     enabled.value = true
     expiresAt.value = result.expiresAt
+    passwordProtected.value = result.passwordProtected
+    sharePassword.value = ''
     shareUrl.value = new URL(result.path, window.location.origin).toString()
     message.value = 'Le nouveau lien est prêt. Tout ancien lien de partage a été désactivé.'
   } catch {
@@ -55,6 +76,9 @@ async function revokeLink() {
     await $fetch(`/api/boards/${encodeURIComponent(props.dashboardId)}/share`, { method: 'DELETE' })
     enabled.value = false
     expiresAt.value = null
+    passwordProtected.value = false
+    protectWithPassword.value = false
+    sharePassword.value = ''
     shareUrl.value = ''
     message.value = 'Le lien public est désactivé.'
   } catch {
@@ -104,6 +128,7 @@ const expirationMessage = computed(() => {
         <div v-if="enabled" class="board-share-enabled">
           <p class="board-share-state"><span class="i-ph-globe-hemisphere-west-bold" aria-hidden="true" /> {{ linkExpired ? 'Le lien a expiré' : 'Le partage est activé' }}</p>
           <p class="board-share-expiration">{{ expirationMessage }}</p>
+          <p v-if="passwordProtected" class="board-share-expiration board-share-protected">Protégé par un mot de passe.</p>
           <p v-if="!shareUrl" class="board-share-note">Pour protéger le lien, il n’est pas conservé en clair. Générez un nouveau lien pour le copier ; l’ancien sera alors révoqué.</p>
           <label v-if="shareUrl" class="board-share-link-label">
             <span>Lien public</span>
@@ -121,6 +146,21 @@ const expirationMessage = computed(() => {
             <option :value="null">Aucune expiration</option>
           </select>
         </label>
+
+        <fieldset class="board-share-password-section">
+          <label class="board-share-password-toggle">
+            <input v-model="protectWithPassword" type="checkbox" aria-label="Protéger le lien par un mot de passe">
+            <span>Protéger le lien par un mot de passe</span>
+          </label>
+          <template v-if="protectWithPassword">
+            <label class="board-share-password-label">
+              <span>{{ passwordProtected ? 'Nouveau mot de passe' : 'Mot de passe' }}</span>
+              <input v-model="sharePassword" type="password" autocomplete="new-password" :required="protectWithPassword" aria-label="Mot de passe du lien">
+            </label>
+            <p class="board-share-password-hint">12 à 128 octets UTF-8 ({{ sharePasswordBytes }} actuellement). Le mot de passe n’est jamais enregistré en clair ni récupérable. {{ passwordProtected ? 'Pour conserver la protection en générant un nouveau lien, choisissez un nouveau mot de passe.' : 'Transmettez-le séparément du lien.' }}</p>
+          </template>
+          <p v-else-if="passwordProtected" class="board-share-password-hint">Générer un lien sans mot de passe remplacera le lien protégé actuel.</p>
+        </fieldset>
 
         <p v-if="error" class="board-share-message is-error" role="alert">{{ error }}</p>
         <p v-else-if="message" class="board-share-message" role="status">{{ message }}</p>
@@ -145,8 +185,16 @@ const expirationMessage = computed(() => {
 .board-share-state { display: flex; align-items: center; gap: 9px; margin: 24px 0 0; color: var(--board-accent-bright); font: 13px/1.4 system-ui, sans-serif; }
 .board-share-state span { font-size: 17px; }
 .board-share-expiration { margin: 5px 0 0 26px; color: var(--board-text-muted); font: 12px/1.5 system-ui, sans-serif; }
+.board-share-protected { color: var(--board-accent-bright); }
 .board-share-expiration-control { display: grid; gap: 8px; margin-top: 20px; color: var(--board-text-soft); font: 12px/1.4 system-ui, sans-serif; }
 .board-share-expiration-control select { box-sizing: border-box; width: 100%; height: 40px; padding: 0 10px; border: 1px solid var(--board-border-control); border-radius: 6px; background: var(--board-surface-alt); color: var(--board-text); font: 13px/1.3 system-ui, sans-serif; }
+.board-share-password-section { display: grid; gap: 12px; margin: 22px 0 0; padding: 0; border: 0; }
+.board-share-password-toggle { display: flex; align-items: center; gap: 10px; color: var(--board-text-soft); font: 13px/1.4 system-ui, sans-serif; cursor: pointer; }
+.board-share-password-toggle input { width: 16px; height: 16px; margin: 0; accent-color: var(--board-accent); }
+.board-share-password-label { display: grid; gap: 8px; color: var(--board-text-soft); font: 12px/1.4 system-ui, sans-serif; }
+.board-share-password-label input { box-sizing: border-box; width: 100%; height: 40px; padding: 0 10px; border: 1px solid var(--board-border-control); border-radius: 6px; background: var(--board-surface-alt); color: var(--board-text); font: 14px/1.3 system-ui, sans-serif; }
+.board-share-password-label input:focus-visible, .board-share-expiration-control select:focus-visible { outline: 2px solid var(--board-accent-bright); outline-offset: 2px; }
+.board-share-password-hint { margin: -4px 0 0 26px; color: var(--board-text-muted); font: 12px/1.5 system-ui, sans-serif; }
 .board-share-link-label { display: grid; gap: 8px; margin-top: 18px; color: var(--board-text-soft); font: 12px/1.4 system-ui, sans-serif; }
 .board-share-link-control { display: flex; gap: 8px; }
 .board-share-link-control input { box-sizing: border-box; min-width: 0; flex: 1; height: 40px; padding: 0 10px; border: 1px solid var(--board-border-control); border-radius: 6px; background: var(--board-surface-alt); color: var(--board-text); font: 12px/1.3 'SF Mono', 'Cascadia Code', monospace; }
