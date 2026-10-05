@@ -1,6 +1,7 @@
 const SHARE_PASSWORD_MIN_BYTES = 12
 const SHARE_PASSWORD_MAX_BYTES = 128
-const SHARE_PASSWORD_ITERATIONS = 600_000
+// Workers rejects PBKDF2 derivations above 100,000 iterations.
+const SHARE_PASSWORD_ITERATIONS = 100_000
 const SHARE_ACCESS_LIFETIME_MS = 12 * 60 * 60 * 1000
 const SHARE_ACCESS_COOKIE = 'lelac_share_access'
 
